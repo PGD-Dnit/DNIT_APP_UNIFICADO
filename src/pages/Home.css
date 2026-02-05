@@ -1,0 +1,83 @@
+.homeRoot {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.homeMap {
+  position: absolute;
+  inset: 0;
+}
+
+.homeOverlay {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 10;
+
+  /* fundo translúcido opcional */
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(6px);
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  user-select: none;
+}
+
+.switchLabel {
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+
+.switchWrap {
+  position: relative;
+  width: 46px;
+  height: 24px;
+  display: inline-block;
+}
+
+.switchInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.switchTrack {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: 0.18s ease;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  transition: 0.18s ease;
+}
+
+.switchInput:checked ~ .switchTrack {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.switchInput:checked ~ .switchThumb {
+  transform: translateX(22px);
+}

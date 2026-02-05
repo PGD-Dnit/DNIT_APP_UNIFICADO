@@ -1,0 +1,73 @@
+/* ============================
+   Botões de calendário (esquerdo / direito)
+   ============================ */
+
+.calendario-botao-esquerdo,
+.calendario-botao-direito {
+  position: absolute;
+  bottom: 40px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--panel, #fff) 90%, transparent);
+  border: 1px solid var(--border, #ccc);
+  border-radius: 5px;
+  box-shadow: var(--shadow, 0 2px 6px rgba(0, 0, 0, 0.15));
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  cursor: default;
+}
+
+/* 📍 Posicionamento distinto */
+.calendario-botao-esquerdo {
+  left: 25%;
+}
+
+.calendario-botao-direito {
+  left: 75%;
+}
+
+/* 🗓️ Botão interno */
+.calendario-botao-esquerdo button,
+.calendario-botao-direito button {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease;
+  color: var(--text, #333);
+}
+
+.calendario-botao-esquerdo button:hover,
+.calendario-botao-direito button:hover {
+  transform: scale(1.15);
+  color: var(--accent, #0078d4);
+}
+
+/* 📅 Label (data atual) */
+.calendario-botao-esquerdo span,
+.calendario-botao-direito span {
+  font-weight: 500;
+  color: var(--text-strong, #111);
+  min-width: 60px;
+  text-align: center;
+}
+
+/* 🌙 Modo escuro opcional (se seu tema usa var(--panel) escuro) */
+@media (prefers-color-scheme: dark) {
+
+  .calendario-botao-esquerdo,
+  .calendario-botao-direito {
+    background: color-mix(in srgb, var(--panel, #1e1e1e) 80%, transparent);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .calendario-botao-esquerdo span,
+  .calendario-botao-direito span {
+    color: #eee;
+  }
+}

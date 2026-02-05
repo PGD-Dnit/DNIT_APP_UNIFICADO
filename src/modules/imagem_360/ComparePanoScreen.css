@@ -1,0 +1,70 @@
+.cps {
+    height: 100vh;
+    width: 100%;
+    display: grid;
+    grid-template-rows: 48px 1fr;
+}
+
+.cps__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.cps__backBtn {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.25);
+    color: inherit;
+    border-radius: 10px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.cps__title {
+    font-weight: 900;
+}
+
+.cps__headerMeta {
+    margin-left: auto;
+    opacity: 0.85;
+    font-size: 12px;
+}
+
+.cps__stage {
+    position: relative;
+    min-height: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.cps__overlay {
+    position: absolute;
+    top: 10px;
+    z-index: 40;
+    pointer-events: auto;
+}
+
+.cps__overlay--left {
+    left: 10px;
+}
+
+.cps__overlay--right {
+    right: 10px;
+}
+
+.cps__overlayTitle {
+    font-weight: 900;
+    font-size: 12px;
+    margin: 0 0 6px 2px;
+    opacity: 0.9;
+}
+
+.cps__minimapWrap {
+    position: absolute;
+    left: 20px;
+    bottom: 80px;
+    z-index: 50;
+    pointer-events: auto;
+}

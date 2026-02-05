@@ -1,0 +1,232 @@
+/* ===============================
+   WebmapList.css
+   Layout fixo com 3 colunas (calendário — mapa — calendário)
+   e mapa central ocupando toda a altura.
+   =============================== */
+
+/* Paleta base via CSS variables */
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --text: #1a1f2c;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+  --accent-hover: #1e40af;
+  --shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+}
+
+/* Dark mode automático */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0f16;
+    --panel: #0f172a;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --border: #1f2937;
+    --accent: #60a5fa;
+    --accent-hover: #93c5fd;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* ===============================
+   MAPA CENTRAL — FULL HEIGHT
+   =============================== */
+#mapa {
+  grid-area: map;
+  flex: 1;
+  height: calc(100vh - 52px);
+  /* border-radius: 16px; */
+  /* border: 1px solid var(--border); */
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  position: relative;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+}
+
+/* O TileSwipeViewer ocupa 100% da área */
+#mapa>div:not(.camadas) {
+  flex: 1;
+  width: 100% !important;
+  /*height: 100% !important;*/
+}
+
+
+/* Estados de erro e carregando */
+#webmap-container p {
+  color: var(--muted);
+  margin: 8px 0;
+}
+
+
+
+.calendar-view-container {
+  position: sticky;
+  top: 12px;
+  width: 100%;
+  max-width: 220px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+  z-index: 100;
+  backdrop-filter: blur(6px);
+  font-size: 0.85rem;
+}
+
+/* Destaque de datas */
+.highlight-date {
+  background-color: rgba(0, 128, 255, 0.4) !important;
+  border-radius: 5%;
+  color: #fff !important;
+  font-weight: bold;
+}
+
+/* ===============================
+   RESPONSIVIDADE
+   =============================== */
+@media (max-width: 1200px) {
+  #webmap-container {
+    grid-template-columns: 200px 1fr 200px;
+  }
+}
+
+@media (max-width: 900px) {
+  #webmap-container {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "map"
+      "left"
+      "right";
+    gap: 12px;
+  }
+
+  .lista {
+    position: static;
+    max-height: none;
+  }
+
+  #mapa {
+    min-height: 520px;
+  }
+}
+
+/* Tipografia geral */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.camadas {
+  position: absolute;
+  top: 100px;
+  left: 40px;
+  width: 260px;
+  max-height: 400px;
+  overflow: auto;
+  z-index: 3000;
+  /* <-- essencial */
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+  color: var(--text);
+  box-sizing: border-box;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+
+.camadas h3 {
+  margin-bottom: 4px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* Ícone flutuante */
+.btn-camadas-icon {
+  position: absolute;
+  top: 90px;
+  left: 15px;
+  font-size: 1.1rem;
+  color: #141414;
+  background: #ffffff;
+  border-radius: 10%;
+  width: 32px !important;
+  height: 31px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  z-index: 30;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
+  transition: background .25s, transform .2s;
+}
+
+.btn-camadas-icon:hover {
+  background: #DEDEDE;
+  transform: scale(1.08);
+}
+
+/* Drawer de camadas */
+.camadas {
+  position: absolute;
+  top: 95px;
+  left: 50px;
+  width: 260px;
+  max-height: calc(100vh - 100px);
+  background: var(--panel-bg, #fff);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .25);
+  padding: 12px;
+  overflow-y: auto;
+  transition: transform .3s ease, opacity .3s ease;
+  z-index: 20;
+}
+
+/* .camadas.fechada { transform: translatey(-120%); opacity: 0; pointer-events: none; }
+.camadas.aberta  { transform: translatey(0);     opacity: 1; } */
+/* 🔹 Fechado → invisível, levemente reduzido */
+.camadas.fechada {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+  /* evita cliques quando invisível */
+}
+
+/* 🔹 Aberto → visível */
+.camadas.aberta {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#webmap-container {
+  position: fixed;
+  /* fixa na viewport */
+  top: 52px;
+  left: 0;
+  width: 100vw;
+  /* largura total */
+  height: calc(100vh - 52px);
+  /* altura total */
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* remove rolagem */
+  background: var(--panel, #000);
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+
+topbar {
+  height: 52;
+  position: relative;
+  z-index: 10;
+}

@@ -1,0 +1,144 @@
+/* ===============================
+   Container e Cabeçalho
+=============================== */
+.calendar-view-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.9rem;
+  background: var(--panel, #fff);
+  border-radius: 10px;
+  border: 1px solid var(--border, #ccc);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.calendar-view-container h4 {
+  margin: 0 0 6px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-strong, #111);
+  text-align: center;
+}
+
+/* ===============================
+   Seletor de Ano
+=============================== */
+.year-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.year-selector button {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--text, #333);
+  transition: color 0.2s, transform 0.2s;
+}
+
+.year-selector button:hover {
+  color: var(--accent, #0078d4);
+  transform: scale(1.2);
+}
+
+.year-selector span {
+  font-weight: 600;
+  color: var(--text-strong, #000);
+}
+
+/* ===============================
+   Grade de Meses
+=============================== */
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
+.month-cell {
+  text-align: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Meses desativados */
+.month-cell.disabled-date {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Meses com mosaico disponível */
+.month-cell.highlight-date {
+  color: var(--text, #222);
+  border-color: transparent;
+}
+
+.month-cell.highlight-date:hover {
+  background: var(--accent-light, #e0f2ff);
+  border-color: var(--accent, #0078d4);
+  color: var(--accent-dark, #004a85);
+  font-weight: 500;
+}
+
+/* Mês selecionado */
+.month-cell.selected-date {
+  background: var(--accent, #0078d4);
+  color: #fff;
+  font-weight: 600;
+  border-color: var(--accent, #0078d4);
+  box-shadow: 0 0 6px rgba(0, 120, 212, 0.5);
+}
+
+/* ===============================
+   Estados Especiais
+=============================== */
+.calendar-view-container.empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted, #777);
+}
+
+/* ===============================
+   Modo Escuro
+=============================== */
+@media (prefers-color-scheme: dark) {
+  .calendar-view-container {
+    background: color-mix(in srgb, var(--panel, #1e1e1e) 85%, transparent);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .calendar-view-container h4 {
+    color: #eee;
+  }
+
+  .year-selector span {
+    color: #fff;
+  }
+
+  .month-cell.highlight-date {
+    color: #ddd;
+  }
+
+  .month-cell.highlight-date:hover {
+    background: rgba(0, 120, 212, 0.25);
+    color: #fff;
+  }
+
+  .month-cell.selected-date {
+    background: var(--accent, #0078d4);
+    box-shadow: 0 0 8px rgba(0, 120, 212, 0.6);
+  }
+}
