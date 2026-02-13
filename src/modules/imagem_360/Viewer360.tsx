@@ -1,4 +1,4 @@
-import React from "react";
+//import React from "react";
 import { useAppStore } from "../../core/store";
 import DualPanoViewer from "./DualPanoViewer"; // ajuste o path se necessário
 

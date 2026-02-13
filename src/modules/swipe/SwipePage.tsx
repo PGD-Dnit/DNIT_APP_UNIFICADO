@@ -3,108 +3,88 @@ import TileSwipeViewer from "./TileSwipeViewer";
 import FeatureServiceList from "./FeatureServiceList";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import MapView from "@arcgis/core/views/MapView";
-//import MosaicCalendar from "./MosaicCalendar";
+
 import "./SwipePage.css";
-import IconCheckbox from "./IconCheckbox";
-/* -------------------------------
-   Tipos e helpers
--------------------------------- */
-type PlanetItemRaw = {
-  id: string;
-  title: string;
-  tileUrl: string;
-};
+import { useAppStore } from "../../core/store";
+import { CONFIG } from "../../core/config";
 
-type PlanetMosaic = {
-  id: string;
-  label: string;
-  tileUrl: string;
-  when?: string;
-};
-
-const normalizePlanetTileUrl = (url: string) =>
-  url
-    .replace("{TileMatrix}", "{level}")
-    .replace("{TileCol}", "{col}")
-    .replace("{TileRow}", "{row}");
-
-const capturedFromId = (id: string) => {
-  const m = id.match(/global_monthly_(\d{4})_(\d{2})_mosaic/i);
-  return m ? `${m[1]}-${m[2]}` : undefined;
-};
-
-/* -------------------------------
-   Componente principal
--------------------------------- */
 const SwipePage: React.FC = () => {
-  const [mosaics, setMosaics] = useState<PlanetMosaic[]>([]);
+  /* =========================
+     Planet mosaics (store)
+     ========================= */
+  const mosaics = useAppStore((s) => s.planetMosaics);
+  const mosaicsLoading = useAppStore((s) => s.planetMosaicsLoading);
+  const mosaicsError = useAppStore((s) => s.planetMosaicsError);
+  const loadPlanetMosaics = useAppStore((s) => s.loadPlanetMosaics);
+
+  const setPlanetSelectedId = useAppStore((s) => s.setPlanetSelectedId);
+
+  /* =========================
+     Swipe state
+     ========================= */
+  const [leftMosaicId, setLeftMosaicId] = useState<string | null>(null);
+  const [rightMosaicId, setRightMosaicId] = useState<string | null>(null);
+
   const [featureServices, setFeatureServices] = useState<any[]>([]);
   const [erro, setErro] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingFeatures, setLoadingFeatures] = useState(true);
 
-  const [leftTileUrl, setLeftTileUrl] = useState<string | null>(null);
-  const [rightTileUrl, setRightTileUrl] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [showCamadas, setShowCamadas] = useState(false);
 
   const viewRef = useRef<MapView | null>(null);
   const activeLayersRef = useRef<{ [url: string]: FeatureLayer }>({});
   const [activeLayerUrls, setActiveLayerUrls] = useState<string[]>([]);
 
-  // 🔘 Estado do painel de camadas (fechado por padrão)
-  const [showCamadas, setShowCamadas] = useState(false);
-
-  /* 1️⃣ Carrega mosaicos e features */
+  /* 1️⃣ Carrega mosaics (1x via store) */
   useEffect(() => {
-    const fetchData = async () => {
+    loadPlanetMosaics();
+  }, [loadPlanetMosaics]);
+
+  /* 2️⃣ Define defaults do swipe */
+  useEffect(() => {
+    if (!mosaics.length) return;
+
+    if (!leftMosaicId) {
+      setLeftMosaicId(mosaics[0].id);
+      setPlanetSelectedId(mosaics[0].id); // 🔗 sincroniza MapBase
+    }
+
+    if (!rightMosaicId) {
+      setRightMosaicId((mosaics[0] || mosaics[0]).id);
+    }
+  }, [mosaics, leftMosaicId, rightMosaicId, setPlanetSelectedId]);
+
+  /* 3️⃣ Carrega Feature Services */
+  useEffect(() => {
+    const fetchFeatures = async () => {
       try {
-        const api = import.meta.env.VITE_API_URL || "http://localhost:3001";
-        const [planetRes, featuresRes] = await Promise.all([
-          fetch(`${api}/planet/mosaics`),
-          fetch(`${api}/features`),
-        ]);
-
-        if (!planetRes.ok) throw new Error("Erro ao buscar mosaics do Planet");
-        if (!featuresRes.ok) throw new Error("Erro ao buscar dados dos Features");
-
-        const planetData: PlanetItemRaw[] = await planetRes.json();
-        const featuresData = await featuresRes.json();
-        console.log("planetData", planetData);
-        console.log("featuresData", featuresData);
-        const items: PlanetMosaic[] = (planetData || []).map((p, i) => {
-          const when = capturedFromId(p.id);
-          return {
-            id: p.id ?? `pl-${i}`,
-            label: when ? `${when} · ${p.title}` : p.title,
-            tileUrl: normalizePlanetTileUrl(p.tileUrl),
-            when,
-          };
+        const r = await fetch(`${CONFIG.API_BASE}/features`, {
+          credentials: "include",
         });
+        if (!r.ok) throw new Error("Erro ao buscar dados dos Features");
 
-        items.sort((a, b) => (b.when! > a.when! ? 1 : -1));
-        setMosaics(items);
-
-        if (items[0]) setLeftTileUrl(items[0].tileUrl);
-        if (items[1]) setRightTileUrl(items[1].tileUrl || items[0].tileUrl);
-
-        const featureOnly = (featuresData || []).filter((f: any) => f.featureUrl);
-        console.log("Feature Services carregados:", featureOnly);
+        const data = await r.json();
+        const featureOnly = (data || []).filter((f: any) => f.featureUrl);
         setFeatureServices(featureOnly);
-      } catch (err) {
-        setErro(err instanceof Error ? err.message : "Erro ao carregar mosaics");
+      } catch (e) {
+        setErro(e instanceof Error ? e.message : "Erro ao carregar features");
       } finally {
-        setLoading(false);
+        setLoadingFeatures(false);
       }
     };
-    fetchData();
+
+    fetchFeatures();
   }, []);
 
-  /* 2️⃣ Controle de Feature Layers */
+  /* 4️⃣ Toggle Feature Layers */
   const handleToggleLayer = (layerUrl: string, visible: boolean) => {
     const view = viewRef.current;
     if (!view) return;
 
     if (visible) {
       if (activeLayersRef.current[layerUrl]) return;
+
       const layer = new FeatureLayer({ url: layerUrl });
       view.map?.add(layer);
       activeLayersRef.current[layerUrl] = layer;
@@ -119,90 +99,77 @@ const SwipePage: React.FC = () => {
     }
   };
 
-  if (loading) return <p>Carregando mosaics do Planet…</p>;
+  /* =========================
+     Loading / Error
+     ========================= */
+  if (mosaicsLoading || loadingFeatures) return <p>Carregando…</p>;
+  if (mosaicsError) return <p>{mosaicsError}</p>;
   if (erro) return <p>{erro}</p>;
 
-  /* 3️⃣ URLs dos mosaicos */
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3001";
-  const leftUrl = leftTileUrl
-    ? `${apiBase}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaics.find(
-      (m) => m.tileUrl === leftTileUrl
-    )?.id}`
-    : "";
-  const rightUrl = rightTileUrl
-    ? `${apiBase}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaics.find(
-      (m) => m.tileUrl === rightTileUrl
-    )?.id}`
+  /* =========================
+     URLs finais do swipe
+     ========================= */
+  const left = mosaics.find((m) => m.id === leftMosaicId);
+  const right = mosaics.find((m) => m.id === rightMosaicId) || left;
+
+  const leftUrl = left
+    ? `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${left.id}`
     : "";
 
-  // 💡 Classe do ícone conforme estado (solid = fechado, regular = aberto)
+  const rightUrl = right
+    ? `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${right.id}`
+    : "";
+
   const iconClass = showCamadas
     ? "fa-solid fa-xmark"
     : "fa-solid fa-layer-group";
 
-  /* 4️⃣ Renderização */
   return (
     <div id="webmap-container">
-      {/* Calendário esquerdo */}
-      {/* <aside className="lista">
-        <MosaicCalendar
-          mosaics={mosaics.map((m) => ({
-            mosaic_name: m.id,
-            date: m.when || "2025-01",
-          }))}
-          title="🗓️ Mosaico Esquerdo"
-          align="left"
-          onSelect={(m) => {
-            const found = mosaics.find((mo) => mo.id === m.mosaic_name);
-            if (found) setLeftTileUrl(found.tileUrl);
-          }}
-        />
-      </aside> */}
-
-      {/* Viewer central */}
       <section id="mapa">
         {leftUrl && rightUrl ? (
           <>
             <TileSwipeViewer
               leftTileUrl={leftUrl}
               rightTileUrl={rightUrl}
-              mosaics={mosaics} // ✅ adiciona aqui!
+              mosaics={mosaics}
               titleLeft={
-                (() => {
-                  const when = mosaics.find((m) => m.tileUrl === leftTileUrl)?.when;
-                  if (!when) return "?";
-                  const [y, mo] = when.split("-");
-                  return `${mo}/${y}`;
-                })()
+                left?.when
+                  ? (() => {
+                    const [y, mo] = left.when.split("-");
+                    return `${mo}/${y}`;
+                  })()
+                  : "?"
               }
               titleRight={
-                (() => {
-                  const when = mosaics.find((m) => m.tileUrl === rightTileUrl)?.when;
-                  if (!when) return "?";
-                  const [y, mo] = when.split("-");
-                  return `${mo}/${y}`;
-                })()
+                right?.when
+                  ? (() => {
+                    const [y, mo] = right.when.split("-");
+                    return `${mo}/${y}`;
+                  })()
+                  : "?"
               }
               onViewReady={(view) => {
                 viewRef.current = view;
+
                 activeLayerUrls.forEach((url) => {
                   const layer = new FeatureLayer({ url });
                   view.map?.add(layer);
                   activeLayersRef.current[url] = layer;
                 });
+
                 setMapReady(true);
               }}
             />
 
-            {/* Ícone flutuante que abre/fecha o painel */}
-            {/* Ícone flutuante para abrir/fechar */}
+            {/* botão flutuante */}
             <i
               className={`${iconClass} btn-camadas-icon`}
               title={showCamadas ? "Esconder camadas" : "Mostrar camadas"}
               onClick={() => setShowCamadas(!showCamadas)}
-            ></i>
+            />
 
-            {/* Painel de camadas (drawer) */}
+            {/* painel de camadas */}
             <div className={`camadas ${showCamadas ? "aberta" : "fechada"}`}>
               <h5>Camadas</h5>
               <FeatureServiceList
@@ -221,22 +188,6 @@ const SwipePage: React.FC = () => {
           <p>Selecione dois mosaicos para comparar</p>
         )}
       </section>
-
-      {/* Calendário direito */}
-      {/* <aside className="lista">
-        <MosaicCalendar
-          mosaics={mosaics.map((m) => ({
-            mosaic_name: m.id,
-            date: m.when || "2025-01",
-          }))}
-          title="🗓️ Mosaico Direito"
-          align="right"
-          onSelect={(m) => {
-            const found = mosaics.find((mo) => mo.id === m.mosaic_name);
-            if (found) setRightTileUrl(found.tileUrl);
-          }}
-        />
-      </aside> */}
     </div>
   );
 };

@@ -9,19 +9,70 @@ import Point from "@arcgis/core/geometry/Point";
 import Graphic from "@arcgis/core/Graphic";
 import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 
-import { FaXmark, } from "react-icons/fa6";
-
 import { useAppStore } from "../../core/store";
 import type { ExposureRef } from "../../core/types";
 import { CONFIG } from "../../core/config";
+import "./MiniMap360View.css";
 
 type Props = {
     defaultZoom?: number;
 };
 
+type OrientedItem = {
+    id: string; // portal item id
+    title?: string;
+    access?: string; // "public"
+    serviceUrl?: string | null; // pode vir .../FeatureServer ou .../FeatureServer/0
+};
+
 function safeNum(v: any): number | null {
     const n = typeof v === "number" ? v : Number(v);
     return Number.isFinite(n) ? n : null;
+}
+
+function toEpochMs(v: any): number | null {
+    if (v == null) return null;
+
+    if (typeof v === "number" && Number.isFinite(v)) return v < 1e12 ? v * 1000 : v;
+
+    if (typeof v === "string") {
+        const n = Number(v);
+        if (Number.isFinite(n)) return n < 1e12 ? n * 1000 : n;
+
+        const t = Date.parse(v);
+        return Number.isFinite(t) ? t : null;
+    }
+
+    if (v instanceof Date) return v.getTime();
+    return null;
+}
+
+function ensureLayer0(url: string) {
+    const u = (url || "").replace(/\/+$/, "");
+    if (u.endsWith("/0")) return u;
+    if (u.endsWith("/FeatureServer")) return `${u}/0`;
+    if (/\/FeatureServer\/\d+$/.test(u)) return u;
+    return u;
+}
+
+async function fetchOrientedImagery(): Promise<OrientedItem[]> {
+    const r = await fetch(`${CONFIG.API_BASE}/oriented-imagery`, {
+        credentials: "include",
+    });
+
+    const raw = await r.text();
+    if (!r.ok) {
+        throw new Error(`GET /oriented-imagery falhou: HTTP ${r.status} — ${raw.slice(0, 200)}`);
+    }
+
+    let data: any;
+    try {
+        data = JSON.parse(raw);
+    } catch {
+        throw new Error(`Resposta não-JSON em /oriented-imagery: ${raw.slice(0, 120)}`);
+    }
+
+    return Array.isArray(data) ? (data as OrientedItem[]) : [];
 }
 
 export default function MiniMap360View({ defaultZoom = 18 }: Props) {
@@ -37,43 +88,34 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
     const setSelectedExposureLeft = useAppStore((s) => s.setSelectedExposureLeft);
     const setSelectedExposureRight = useAppStore((s) => s.setSelectedExposureRight);
 
-    // ⚠️ Se você quiser o mesmo comportamento do Map360View (abrir compareOpen ao clicar no mini),
-    // descomente estas 2 linhas:
     const setCompareOpen = useAppStore((s) => s.setCompareOpen);
     const compareOpen = useAppStore((s) => s.compareOpen);
 
-    // camada e efeito ficam “presos” ao ciclo do MapView
-    const exposureLayerRef = useRef<__esri.FeatureLayer | null>(null);
+    // ✅ múltiplas camadas oriented no mini
+    const layersRef = useRef<FeatureLayer[]>([]);
+    const createdLayersRef = useRef<FeatureLayer[]>([]);
 
     // marcador do último clique (só visual)
     const clickGraphicRef = useRef<__esri.Graphic | null>(null);
 
-    const layerUrl = useMemo(() => CONFIG.IMAGENS360_LAYER_URL, []);
+    // apenas pra forçar 1 fetch por mount
+    const orientedFetchOnce = useMemo(() => ({ done: false }), []);
 
     // =========================
-    // 1) Cria o mini MapView
+    // 1) Cria o mini MapView + carrega camadas /oriented-imagery
     // =========================
     useEffect(() => {
         if (!divRef.current) return;
         if (viewRef.current) return; // não recriar
 
         const map = new EsriMap({
-            basemap: "streets-vector", // ✅ street (sem API key em muitos ambientes; se falhar, troque p/ "streets")
+            basemap: "streets-vector",
         });
-
-        const exposureLayer = new FeatureLayer({
-            url: layerUrl, // já com /0
-            outFields: ["*"],
-            title: "Exposure Points (mini)",
-        });
-
-        exposureLayerRef.current = exposureLayer;
-        map.add(exposureLayer);
 
         const view = new MapView({
             container: divRef.current,
             map,
-            center: [-47.8825, -15.7942], // inicial, depois vai sincronizar com lastClickedPoint
+            center: [-47.8825, -15.7942],
             zoom: defaultZoom,
             ui: { components: [] },
             constraints: { rotationEnabled: false },
@@ -81,8 +123,58 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
 
         viewRef.current = view;
 
-        // ✅ quando o view estiver pronto, adiciona o marcador (se já tiver lastClickedPoint)
+        let cancelled = false;
+
+        // ✅ carrega TODAS as camadas oriented imagery no mini
+        const loadOrientedLayers = async () => {
+            if (orientedFetchOnce.done) return;
+            orientedFetchOnce.done = true;
+
+            try {
+                const items = await fetchOrientedImagery();
+                if (cancelled) return;
+
+                const defs = (items || [])
+                    .filter((it) => it?.serviceUrl)
+                    // se quiser confiar só no backend, pode remover este filter
+                    .filter((it) => String(it.access || "").toLowerCase() === "public")
+                    .map((it) => ({
+                        id: it.id,
+                        title: it.title ?? "Imagem 360",
+                        url0: ensureLayer0(String(it.serviceUrl)),
+                    }));
+
+                for (const def of defs) {
+                    // evita duplicar se houver reload
+                    const exists = layersRef.current.find((l) => l.id === `mini:oi:${def.id}`);
+                    if (exists) continue;
+
+                    const layer = new FeatureLayer({
+                        url: def.url0,
+                        id: `mini:oi:${def.id}`,
+                        title: def.title,
+                        outFields: ["*"],
+                    });
+
+                    map.add(layer);
+                    layersRef.current.push(layer);
+                    createdLayersRef.current.push(layer);
+
+                    layer.load().catch((e) => {
+                        console.warn(`[MiniMap] layer load falhou: ${def.title} (${def.url0})`, e);
+                    });
+                }
+            } catch (e) {
+                console.warn("[MiniMap] Falha ao carregar /oriented-imagery:", e);
+            }
+        };
+
+        // quando view estiver pronto, aplica marcador/zoom se já tiver lastClickedPoint
         view.when(() => {
+            if (cancelled) return;
+
+            loadOrientedLayers();
+
             if (lastClickedPoint) {
                 placeClickMarker(lastClickedPoint.x, lastClickedPoint.y, lastClickedPoint.wkid);
                 safeGoTo(lastClickedPoint.x, lastClickedPoint.y, defaultZoom, lastClickedPoint.wkid);
@@ -91,7 +183,6 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
 
         // CLICK no mini mapa (seleciona outro ponto)
         const clickHandle = view.on("click", async (event) => {
-            // ⚠️ quando recolhido, ignora (não rouba evento do pano)
             if (collapsed) return;
 
             const mp = view.toMap(event);
@@ -101,23 +192,28 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
                     y: mp.y,
                     wkid: mp.spatialReference?.wkid ?? undefined,
                 });
-
                 placeClickMarker(mp.x, mp.y, mp.spatialReference?.wkid ?? undefined);
             }
 
-            const exposureLayerLocal = exposureLayerRef.current;
-            if (!exposureLayerLocal) return;
+            const includeLayers = layersRef.current;
+            if (!includeLayers.length) return;
 
-            const hit = await view.hitTest(event, { include: [exposureLayerLocal] });
+            const hit = await view.hitTest(event, { include: includeLayers });
 
-
-            // ✅ só hits da exposureLayer
+            // ✅ só hits das layers oriented do mini
             const exposureGraphics = hit.results
                 .map((r) => (r as __esri.MapViewGraphicHit).graphic)
-                .filter((g) => g?.layer === exposureLayerLocal && g.attributes) as __esri.Graphic[];
+                .filter((g) => {
+                    const lyr: any = g?.layer;
+                    return (
+                        lyr &&
+                        lyr.type === "feature" &&
+                        String(lyr.id || "").startsWith("mini:oi:") &&
+                        g.attributes
+                    );
+                }) as __esri.Graphic[];
 
             if (exposureGraphics.length === 0) {
-                // limpa seleção, mas mantém marcador e lastClickedPoint
                 setCandidateExposures([]);
                 setSelectedExposureLeft(null);
                 setSelectedExposureRight(null);
@@ -125,34 +221,42 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
                 return;
             }
 
-            // monta candidates (sobrepostos)
-            const rawCandidates: ExposureRef[] = exposureGraphics
-                .map((g) => {
-                    const oid = g.attributes?.OBJECTID ?? g.attributes?.objectid ?? g.attributes?.ObjectId;
-                    const objectId = safeNum(oid);
-                    if (objectId == null) return null;
+            // ✅ monta candidates (sobrepostos) — múltiplas layers
+            const uniq = new globalThis.Map<string, ExposureRef>();
 
-                    const acq = g.attributes?.acquisitiondate ?? g.attributes?.acquisitionDate ?? null;
-                    const acquisitionDate = safeNum(acq);
+            for (const g of exposureGraphics) {
+                const lyr = g.layer as FeatureLayer;
 
-                    const ref: ExposureRef = {
-                        objectId,
-                        layerUrl,
-                        title: "Exposure",
-                        attrs: {
-                            ...g.attributes,
-                            acquisitiondate: acquisitionDate ?? g.attributes?.acquisitiondate ?? null,
-                        },
-                        acquisitionDate: acquisitionDate ?? undefined,
-                    };
+                const oidField = lyr.objectIdField;
+                const objectId = safeNum(g.attributes?.[oidField]);
+                if (objectId == null) continue;
 
-                    return ref;
-                })
-                .filter(Boolean) as ExposureRef[];
+                const acqRaw =
+                    g.attributes?.acquisitiondate ??
+                    g.attributes?.acquisitionDate ??
+                    g.attributes?.AcquisitionDate ??
+                    null;
 
-            // remove duplicados por objectId
-            const uniq = new globalThis.Map<number, ExposureRef>();
-            for (const c of rawCandidates) uniq.set(c.objectId, c);
+                const acqMs = toEpochMs(acqRaw);
+
+                const layerUrl0 = ensureLayer0(lyr.url);
+
+                const ref: ExposureRef = {
+                    objectId,
+                    layerUrl: layerUrl0,
+                    title: g.attributes?.name ?? lyr.title ?? "Imagem 360",
+                    attrs: {
+                        ...g.attributes,
+                        acquisitiondate: acqMs ?? null,
+                        __layerTitle: lyr.title ?? null,
+                        __layerId: lyr.id ?? null,
+                    },
+                    acquisitionDate: acqMs ?? undefined,
+                };
+
+                uniq.set(`${layerUrl0}::${objectId}`, ref);
+            }
+
             const candidates = Array.from(uniq.values());
 
             // ordena por data desc
@@ -165,21 +269,23 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
             setCandidateExposures(candidates);
 
             const left = candidates[0] ?? null;
-            //const right = candidates[1] ?? candidates[0] ?? null;
             const right = candidates[0] ?? null;
 
             setSelectedExposureLeft(left);
             setSelectedExposureRight(right);
 
-            // ✅ abre a tela de comparação se ainda não estiver aberta
+            // abre a tela de comparação se ainda não estiver aberta
             if (!compareOpen) setCompareOpen(true);
 
-            applyHighlight(left?.objectId ?? null);
+            // highlight do selecionado (aplica por layer, usando FeatureEffect na layer certa)
+            applyHighlight(left);
 
-            // zoom no primeiro
-            const bestGraphic = exposureGraphics.find((g) => {
-                const oid = g.attributes?.OBJECTID ?? g.attributes?.objectid ?? g.attributes?.ObjectId;
-                return safeNum(oid) === left?.objectId;
+            // zoom no primeiro (se achar geometry)
+            const bestGraphic = exposureGraphics.find((gr) => {
+                const lyr = gr.layer as FeatureLayer;
+                const oidField = lyr.objectIdField;
+                const oid = safeNum(gr.attributes?.[oidField]);
+                return oid === left?.objectId && ensureLayer0(lyr.url) === left?.layerUrl;
             });
 
             try {
@@ -196,19 +302,35 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
 
         // cleanup
         return () => {
+            cancelled = true;
+
             try {
                 clickHandle?.remove();
             } catch { }
+
+            // remove layers criadas
+            const mapNow = viewRef.current?.map;
+            if (mapNow) {
+                for (const lyr of createdLayersRef.current) {
+                    try {
+                        mapNow.remove(lyr);
+                        lyr.destroy?.();
+                    } catch { }
+                }
+            }
+            createdLayersRef.current = [];
+            layersRef.current = [];
+
             try {
                 view?.destroy();
             } catch { }
+
             viewRef.current = null;
-            exposureLayerRef.current = null;
             clickGraphicRef.current = null;
         };
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [divRef, layerUrl]);
+    }, [divRef, defaultZoom]);
 
     // =========================
     // 2) Sempre que lastClickedPoint mudar, recentraliza o mini mapa
@@ -218,7 +340,6 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
         if (!view) return;
         if (!lastClickedPoint) return;
 
-        // atualiza marcador e dá goTo
         placeClickMarker(lastClickedPoint.x, lastClickedPoint.y, lastClickedPoint.wkid);
         safeGoTo(lastClickedPoint.x, lastClickedPoint.y, defaultZoom, lastClickedPoint.wkid);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,17 +348,25 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
     // =========================
     // Helpers: highlight + marker + goTo
     // =========================
-    function applyHighlight(oid: number | null) {
-        const exposureLayer = exposureLayerRef.current;
-        if (!exposureLayer) return;
 
-        if (!oid) {
-            exposureLayer.featureEffect = null;
-            return;
+    /** aplica destaque só na layer do candidato */
+    function applyHighlight(selected: ExposureRef | null) {
+        const layers = layersRef.current;
+
+        // limpa
+        for (const lyr of layers) {
+            try {
+                (lyr as any).featureEffect = null;
+            } catch { }
         }
 
-        exposureLayer.featureEffect = new FeatureEffect({
-            filter: { where: `OBJECTID = ${oid}` },
+        if (!selected) return;
+
+        const targetLayer = layers.find((l) => ensureLayer0(l.url) === selected.layerUrl);
+        if (!targetLayer) return;
+
+        targetLayer.featureEffect = new FeatureEffect({
+            filter: { where: `${targetLayer.objectIdField} = ${selected.objectId}` },
             includedEffect: "drop-shadow(2px, 2px, 3px, rgba(0,0,0,0.7)) brightness(1.25)",
             excludedEffect: "opacity(95%) grayscale(10%)",
         });
@@ -262,7 +391,6 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
 
         const g = new Graphic({ geometry: pt, symbol });
 
-        // remove antigo
         if (clickGraphicRef.current) {
             try {
                 view.graphics.remove(clickGraphicRef.current);
@@ -283,107 +411,33 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
             spatialReference: wkid ? { wkid } : view.spatialReference,
         });
 
-        // ⚠️ Se o view ainda não estiver “ready”, goTo pode abortar
         view.when(() => {
             view.goTo({ target: pt, zoom }, { animate: true, duration: 250 }).catch(() => { });
         });
     }
 
     // =========================
-    // UI (container + botão retrátil)
+    // UI
     // =========================
     return (
-        <div
-            style={{
-                width: collapsed ? 44 : 480,
-                height: collapsed ? 44 : 220,
-                borderRadius: 10,
-                overflow: "hidden",
-                border: "1px solid rgba(255,255,255,0.18)",
-                background: "rgba(0,0,0,0.35)",
-                backdropFilter: "blur(6px)",
-                position: "relative",
-                pointerEvents: "auto",
-            }}
-        >
+        <div className={`minimap ${collapsed ? "is-collapsed" : ""}`}>
             {/* Botão retrátil */}
             <button
                 type="button"
+                className="minimap__toggleBtn"
                 onClick={() => setCollapsed((v) => !v)}
                 title={collapsed ? "Abrir mini mapa" : "Recolher mini mapa"}
-                style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    zIndex: 10,
-                    width: 30,
-                    height: 30,
-                    borderRadius: 10,
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    background: "rgba(0,0,0,0.45)",
-                    color: "inherit",
-                    cursor: "pointer",
-                    display: "flex!important",
-                    alignItems: "center !important",
-                    justifyContent: "center !important",
-                    placeItems: "left",
-                }}
             >
                 {collapsed ? (
-                    <i
-                        className="fa-regular fa-map"
-                        style={{
-                            lineHeight: 1,
-                            textAlign: "center",
-                            width: "100%",
-                            marginLeft: "-5px",
-                        }}
-                    />
+                    <i className="fa-regular fa-map minimap__icon minimap__icon--map" />
                 ) : (
-                    <i
-                        className="fa-solid fa-xmark"
-                        style={{
-                            lineHeight: 1,
-                            textAlign: "center",
-                            width: "100%",
-                            marginLeft: "-3px",
-                        }}
-                    />
+                    <i className="fa-solid fa-xmark minimap__icon minimap__icon--x" />
                 )}
-
             </button>
 
-            {/* “HUD” compacto */}
-            {
-                !collapsed && (
-                    <div
-                        style={{
-                            position: "absolute",
-                            left: 8,
-                            top: 8,
-                            zIndex: 10,
-                            fontSize: 11,
-                            padding: "4px 6px",
-                            borderRadius: 8,
-                            background: "rgba(0,0,0,0.45)",
-                            border: "1px solid rgba(255,255,255,0.12)",
-                        }}
-                    >
-                        MiniMap • clique p/ trocar ponto
-                    </div>
-                )
-            }
+            {!collapsed && <div className="minimap__hud">MiniMap • clique p/ trocar ponto</div>}
 
-            {/* View */}
-            <div
-                ref={divRef}
-                style={{
-                    width: "100%",
-                    height: "100%",
-                    opacity: collapsed ? 0 : 1,
-                    pointerEvents: collapsed ? "none" : "auto",
-                }}
-            />
-        </div >
+            <div ref={divRef} className="minimap__view" />
+        </div>
     );
 }

@@ -32,7 +32,7 @@ const WebMapViewer: React.FC<Props> = ({ itemId }) => {
     };
   }, [itemId]);
 
-  return <div ref={mapRef} style={{ height: "800px", marginTop: "20px" }} />;
+  return <div ref={mapRef} style={{ height: "1000px", marginTop: "20px" }} />;
 };
 
 export default WebMapViewer;

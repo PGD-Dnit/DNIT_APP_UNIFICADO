@@ -1,8 +1,8 @@
 .cps {
     height: 100vh;
     width: 100%;
-    display: grid;
-    grid-template-rows: 48px 1fr;
+    /* display: grid;
+    grid-template-rows: 48px 1fr; */
 }
 
 .cps__header {
@@ -63,8 +63,8 @@
 
 .cps__minimapWrap {
     position: absolute;
-    left: 20px;
-    bottom: 80px;
+    left: 15px;
+    bottom: 60px;
     z-index: 50;
     pointer-events: auto;
 }

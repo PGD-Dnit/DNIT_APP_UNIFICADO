@@ -1,4 +1,4 @@
-import React from "react";
+//
 import HomeMap from "../modules/map/MapBase";
 
 export default function Home() {

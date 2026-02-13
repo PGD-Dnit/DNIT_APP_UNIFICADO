@@ -44,6 +44,37 @@ export default function ComparePanoScreen() {
   const setPanoLeft = useAppStore((s) => s.setPanoLeft);
   const setPanoRight = useAppStore((s) => s.setPanoRight);
 
+  useEffect(() => {
+    const targetOrigin = window.location.origin;
+    const params = new URLSearchParams(window.location.search);
+    const mid = params.get("mid"); // opcional, usado só para debug/ack
+
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== targetOrigin) return;
+
+      const data: any = e.data;
+      if (!data || data.__type !== "DNIT_COMPARE_INIT") return;
+
+      // se você quiser garantir que só aceita o mid desta aba:
+      if (mid && data.msgId && data.msgId !== mid) return;
+
+      // hidrata store
+      if (data.lastClickedPoint) useAppStore.getState().setLastClickedPoint(data.lastClickedPoint);
+      if (Array.isArray(data.candidates)) useAppStore.getState().setCandidateExposures(data.candidates);
+      if (data.left) useAppStore.getState().setSelectedExposureLeft(data.left);
+      if (data.right) useAppStore.getState().setSelectedExposureRight(data.right);
+
+      // ACK para a aba origem parar o retry
+      try {
+        window.opener?.postMessage({ __type: "DNIT_COMPARE_ACK", msgId: data.msgId }, targetOrigin);
+      } catch { }
+    };
+
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
+
   const markedDates = useMemo(() => {
     return candidateExposures
       .map((c) => c.attrs?.acquisitiondate)
@@ -145,7 +176,7 @@ export default function ComparePanoScreen() {
   return (
     <div className="cps">
       <div className="cps__header">
-        <button type="button" className="cps__backBtn" onClick={() => setCompareOpen(false)}>
+        {/* <button type="button" className="cps__backBtn" onClick={() => setCompareOpen(false)}>
           ⬅ Voltar
         </button>
 
@@ -153,13 +184,13 @@ export default function ComparePanoScreen() {
 
         <div className="cps__headerMeta">
           Sobrepostos: <b>{candidateExposures.length}</b>
-        </div>
+        </div> */}
       </div>
 
       <div className="cps__stage">
         {/* calendário ESQ */}
         <div className="cps__overlay cps__overlay--left">
-          <div className="cps__overlayTitle">ESQ</div>
+          <div className="cps__overlayTitle"></div>
           <MarkedCalendar
             markedDates={markedDates}
             onPick={onPickLeft}
@@ -169,7 +200,7 @@ export default function ComparePanoScreen() {
 
         {/* calendário DIR */}
         <div className="cps__overlay cps__overlay--right">
-          <div className="cps__overlayTitle">DIR</div>
+          <div className="cps__overlayTitle"></div>
           <MarkedCalendar
             markedDates={markedDates}
             onPick={onPickRight}

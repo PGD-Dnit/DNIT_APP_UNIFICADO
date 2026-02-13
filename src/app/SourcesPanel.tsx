@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+//import React, { useEffect, useState } from "react";
 import { apiClient } from "../core/apiClient";
-import { useAppStore } from "../core/store1";
+import { useAppStore } from "../core/store";
 import type { TileSource } from "../core/types";
+import { useAppStore } from "../core/store";
 
 export default function SourcesPanel() {
   const setLeftTile = useAppStore((s) => s.setLeftTile);

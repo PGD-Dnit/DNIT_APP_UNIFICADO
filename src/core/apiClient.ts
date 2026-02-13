@@ -4,7 +4,6 @@ import { CONFIG } from "./config";
    Helpers
    ========================= */
 async function getJson<T>(pathOrUrl: string): Promise<T> {
-  // se vier url absoluta (http...), usa como está
   const url = /^https?:\/\//i.test(pathOrUrl)
     ? pathOrUrl
     : `${CONFIG.API_BASE}${pathOrUrl}`;
@@ -30,7 +29,7 @@ export type PlanetMosaic = {
   id: string;
   title: string;
   format: string;
-  tileUrl: string; // template do seu proxy
+  tileUrl: string;   // template do seu proxy (ou WMTS->XYZ já pronto)
   captured?: string; // "YYYY-MM"
   bbox?: [number, number, number, number];
 };
@@ -40,7 +39,7 @@ export type WaybackRelease = {
   title: string;
   releaseDate: string;
   releaseNum: number;
-  tileUrl: string; // template WMTS->XYZ já pronto
+  tileUrl: string;
 };
 
 export type OrientedItem = {
@@ -84,7 +83,6 @@ export async function listAttachments(
     .filter((a: AttachmentInfo) => Number.isFinite(a.id));
 }
 
-
 export function buildAttachmentUrl(
   layerUrl: string,
   objectId: number,
@@ -98,8 +96,8 @@ export type AttachmentInfoEx = {
   name?: string;
   contentType?: string;
   size?: number;
-  exifInfo?: any;        // quando disponível
-  keywords?: string;     // quando disponível
+  exifInfo?: any;
+  keywords?: string;
 };
 
 export async function listAttachmentsWithMeta(
@@ -123,7 +121,6 @@ export async function listAttachmentsWithMeta(
     .filter((a: AttachmentInfoEx) => Number.isFinite(a.id));
 }
 
-
 /* =========================
    Client principal (seu Express)
    ========================= */
@@ -142,3 +139,13 @@ export const apiClient = {
 
   features: (limit = 50) => getJson<any[]>(`/features?limit=${limit}`),
 };
+
+/* =========================
+   ✅ ADIÇÃO para o store (Opção B)
+   =========================
+   O store só precisa de uma função simples para obter os mosaics.
+   Você pode usar apiClient.planetMosaics direto, mas assim fica mais explícito.
+*/
+export async function getPlanetMosaicsRaw(limit = 200): Promise<PlanetMosaic[]> {
+  return apiClient.planetMosaics("", limit);
+}

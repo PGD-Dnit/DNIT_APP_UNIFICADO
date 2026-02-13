@@ -56,20 +56,19 @@ export default function TileSwipeViewer({
       container: mapDiv.current,
       map,
       center: [-53, -15.8],
-      zoom: 5,
+      zoom: 4,
+      extent: {
+        xmin: -75,
+        ymin: -35,
+        xmax: -30,
+        ymax: 10,
+        spatialReference: { wkid: 4326 },
+      },
       constraints: {
         snapToZoom: false,
         minZoom: 4,
-        maxZoom: 18,
+        maxZoom: 22,
         rotationEnabled: true,
-        geometry: {
-          type: "extent",
-          xmin: -75,
-          ymin: -35,
-          xmax: -30,
-          ymax: 10,
-          spatialReference: { wkid: 4326 },
-        },
       },
     });
     viewRef.current = view;
@@ -116,14 +115,14 @@ export default function TileSwipeViewer({
     view.ui.add(swipe);
 
     const zoom = view.ui.find("zoom");
-if (zoom) {
-  const container = (zoom as any).container as HTMLElement;
-  Object.assign(container.style, {
-    borderRadius: "10%",
-    overflow: "hidden",
-   
-  });
-}
+    if (zoom) {
+      const container = (zoom as any).container as HTMLElement;
+      Object.assign(container.style, {
+        borderRadius: "10%",
+        overflow: "hidden",
+
+      });
+    }
 
     if (onViewReady) onViewReady(view);
 
