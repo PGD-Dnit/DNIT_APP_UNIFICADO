@@ -3,7 +3,6 @@ import { useAppStore } from "../../core/store";
 
 import ComparePanoScreen from "../imagem_360/ComparePanoScreen";
 import Image360Panel from "../imagem_360/Image360Panel";
-import MiniMap360View from "../imagem_360/MiniMap360View";
 import { Setup360OnView } from "../imagem_360/Setup360OnView";
 
 export default function AppInit() {

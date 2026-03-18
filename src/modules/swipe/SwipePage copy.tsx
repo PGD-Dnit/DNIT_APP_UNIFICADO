@@ -5,7 +5,7 @@ import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import MapView from "@arcgis/core/views/MapView";
 //import MosaicCalendar from "./MosaicCalendar";
 import "./SwipePage.css";
-import IconCheckbox from "./IconCheckbox";
+
 /* -------------------------------
    Tipos e helpers
 -------------------------------- */

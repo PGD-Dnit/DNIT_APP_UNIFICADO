@@ -1,8 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Map from "@arcgis/core/Map";
 import MapView from "@arcgis/core/views/MapView";
 import WebTileLayer from "@arcgis/core/layers/WebTileLayer";
-import Extent from "@arcgis/core/geometry/Extent";
 
 
 // ✅ Widgets

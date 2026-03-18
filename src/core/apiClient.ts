@@ -8,7 +8,10 @@ async function getJson<T>(pathOrUrl: string): Promise<T> {
     ? pathOrUrl
     : `${CONFIG.API_BASE}${pathOrUrl}`;
 
-  const r = await fetch(url, { credentials: "include" });
+  //const r = await fetch(url, { credentials: "include" });
+  //const r = await fetch(url);
+  const sameOrigin = url.startsWith(window.location.origin);
+  const r = await fetch(url, { credentials: sameOrigin ? "include" : "omit" });
   const text = await r.text();
 
   if (!r.ok) {

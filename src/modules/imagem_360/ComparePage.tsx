@@ -1,5 +1,5 @@
 // src/modules/imagem_360/ComparePage.tsx
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 import { useAppStore } from "../../core/store";

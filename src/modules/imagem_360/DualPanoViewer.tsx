@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
 export type Props = {
@@ -154,7 +154,7 @@ export default function DualPanoViewer({
 
       try {
         (event.target as HTMLElement)?.setPointerCapture?.(event.pointerId);
-      } catch {}
+      } catch { }
     };
 
     const onPointerMoveWindow = (event: PointerEvent) => {

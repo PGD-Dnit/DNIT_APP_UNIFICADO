@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import "react-calendar/dist/Calendar.css";
 import "./MosaicCalendar.css";
 
@@ -25,7 +25,7 @@ interface Props {
 
 export default function MosaicCalendar({
   mosaics = [],
-  onSelect = () => {},
+  onSelect = () => { },
   title = "Mosaicos disponíveis",
   align = "right",
   selected,
@@ -63,18 +63,18 @@ export default function MosaicCalendar({
       const arr = map.get(y)!;
       if (!arr.includes(mo)) arr.push(mo);
     });
-    for (const [y, arr] of map) map.set(y, arr.sort((a,b)=>a-b));
+    for (const [y, arr] of map) map.set(y, arr.sort((a, b) => a - b));
     return map;
   }, [normalized]);
 
   // Ano inicial: se tem uma seleção, usa o ano dela; senão, último ano com dados; senão, ano atual
   useEffect(() => {
     if (currentSelected?.year) { setYear(currentSelected.year); return; }
-    const years = Array.from(availableMonths.keys()).sort((a,b)=>a-b);
+    const years = Array.from(availableMonths.keys()).sort((a, b) => a - b);
     if (years.length) setYear(years[years.length - 1]);
   }, [currentSelected, availableMonths]);
 
-  const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
   if (!normalized.length) {
     return (
@@ -119,7 +119,7 @@ export default function MosaicCalendar({
               type="button"
               className={`month-cell ${isAvailable ? "highlight-date" : "disabled-date"} ${isSelected ? "selected-date" : ""}`}
               onClick={() => handleSelectMonth(idx)}
-              title={isAvailable ? `Ver mosaico ${String(month).padStart(2,"0")}/${year}` : "Sem mosaico neste mês"}
+              title={isAvailable ? `Ver mosaico ${String(month).padStart(2, "0")}/${year}` : "Sem mosaico neste mês"}
               aria-pressed={isSelected}
               disabled={!isAvailable}
             >

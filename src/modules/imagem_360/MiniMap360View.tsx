@@ -1,5 +1,5 @@
 // src/modules/imagem_360/MiniMap360View.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import EsriMap from "@arcgis/core/Map";
 import MapView from "@arcgis/core/views/MapView";
@@ -47,7 +47,7 @@ function toEpochMs(v: any): number | null {
     return null;
 }
 
-function ensureLayer0(url: string) {
+function ensureLayer0(url: string | null | undefined) {
     const u = (url || "").replace(/\/+$/, "");
     if (u.endsWith("/0")) return u;
     if (u.endsWith("/FeatureServer")) return `${u}/0`;

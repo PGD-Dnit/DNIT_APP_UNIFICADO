@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Map from "@arcgis/core/Map";
 import MapView from "@arcgis/core/views/MapView";
 import WebTileLayer from "@arcgis/core/layers/WebTileLayer";
@@ -15,6 +15,7 @@ interface Props {
   titleLeft?: string;
   titleRight?: string;
   mosaics?: any[];
+  initialViewpoint?: __esri.Viewpoint;
   onViewReady?: (view: __esri.MapView) => void;
 }
 
@@ -24,6 +25,7 @@ export default function TileSwipeViewer({
   titleLeft = "Mosaico Esquerdo",
   titleRight = "Mosaico Direito",
   mosaics = [],
+  initialViewpoint,
   onViewReady,
 }: Props) {
   const mapDiv = useRef<HTMLDivElement>(null);
@@ -52,18 +54,26 @@ export default function TileSwipeViewer({
     if (!mapDiv.current) return;
 
     const map = new Map({ basemap: "hybrid" });
+
+    // Se não temos um viewpoint inicial, aplicamos o centro e zoom padrão
+    const defaultProps = initialViewpoint
+      ? { viewpoint: initialViewpoint }
+      : {
+        center: [-53, -15.8],
+        zoom: 4,
+        extent: {
+          xmin: -75,
+          ymin: -35,
+          xmax: -30,
+          ymax: 10,
+          spatialReference: { wkid: 4326 },
+        }
+      };
+
     const view = new MapView({
       container: mapDiv.current,
       map,
-      center: [-53, -15.8],
-      zoom: 4,
-      extent: {
-        xmin: -75,
-        ymin: -35,
-        xmax: -30,
-        ymax: 10,
-        spatialReference: { wkid: 4326 },
-      },
+      ...defaultProps,
       constraints: {
         snapToZoom: false,
         minZoom: 4,
@@ -124,7 +134,12 @@ export default function TileSwipeViewer({
       });
     }
 
-    if (onViewReady) onViewReady(view);
+    view.when(() => {
+      if (initialViewpoint && initialViewpoint.rotation) {
+        view.rotation = initialViewpoint.rotation;
+      }
+      if (onViewReady) onViewReady(view);
+    });
 
     return () => {
       swipe.destroy();

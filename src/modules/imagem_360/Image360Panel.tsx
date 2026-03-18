@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../../core/store";
 import { listAttachments, buildAttachmentUrl } from "../../core/apiClient";
 

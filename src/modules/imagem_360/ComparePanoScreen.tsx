@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useAppStore } from "../../core/store";
 import DualPanoViewer from "./DualPanoViewer";
 import { MarkedCalendar } from "./MarkedCalendar";
@@ -28,8 +28,6 @@ function sameDay(a: Date, b: Date) {
 }
 
 export default function ComparePanoScreen() {
-  const setCompareOpen = useAppStore((s) => s.setCompareOpen);
-
   const candidateExposures = useAppStore((s) => s.candidateExposures);
 
   const leftExp = useAppStore((s) => s.selectedExposureLeft);

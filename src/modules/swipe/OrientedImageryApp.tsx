@@ -122,15 +122,13 @@ export default function OrientedImageryApp({
     };
     window.addEventListener("keydown", onKey);
 
-    // Ajuste responsivo ao redimensionar
-    const resize = () => view?.resize();
-    window.addEventListener("resize", resize);
+    // Ajuste responsivo automático
+
 
     return () => {
       clickHandle?.remove();
       watcherCleanup?.remove?.();
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", resize);
       oiViewer?.destroy?.();
       view?.destroy?.();
       map.removeAll();
@@ -148,7 +146,7 @@ export default function OrientedImageryApp({
           <button
             className="px-3 py-2 rounded-xl bg-white/90 shadow text-sm hover:bg-white"
             onClick={() => {
-              const view = (window as any).require?.("esri/views/MapView") || null; // placeholder
+
               // toggling é controlado pelo state imageryOn; emitimos um evento custom via DOM é overkill
               // Por simplicidade, disparamos um CustomEvent e tratamos no efeito? Mantemos simples: só alterar state
               setImageryOn((prev) => !prev);

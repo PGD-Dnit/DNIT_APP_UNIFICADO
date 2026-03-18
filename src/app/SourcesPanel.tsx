@@ -1,4 +1,4 @@
-//import React, { useEffect, useState } from "react";
+/* //import React, { useEffect, useState } from "react";
 import { apiClient } from "../core/apiClient";
 import { useAppStore } from "../core/store";
 import type { TileSource } from "../core/types";
@@ -95,3 +95,4 @@ export default function SourcesPanel() {
     </div>
   );
 }
+ */

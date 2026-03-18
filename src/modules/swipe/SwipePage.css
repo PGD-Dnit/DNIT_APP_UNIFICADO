@@ -230,3 +230,15 @@ topbar {
   position: relative;
   z-index: 10;
 }
+
+.btn-dualmode {
+  position: absolute;
+  z-index: 90;
+  top: 12px;
+  left: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, .15);
+  background: #fff;
+  cursor: pointer;
+}

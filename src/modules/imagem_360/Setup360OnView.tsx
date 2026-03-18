@@ -34,7 +34,7 @@ function toEpochMs(v: any): number | null {
     return null;
 }
 
-function ensureLayer0(url: string) {
+function ensureLayer0(url: string | null | undefined) {
     const u = (url || "").replace(/\/+$/, "");
     if (u.endsWith("/0")) return u;
     if (u.endsWith("/FeatureServer")) return `${u}/0`;
@@ -93,6 +93,7 @@ export function Setup360OnView(view: MapView) {
 
             for (const def of defs) {
                 const id = `oi:${def.id}`;
+                if (!view.map) continue;
                 const existing = view.map.findLayerById(id) as FeatureLayer | null;
 
                 if (existing) {
@@ -107,7 +108,7 @@ export function Setup360OnView(view: MapView) {
                     outFields: ["*"],
                 });
 
-                view.map.add(layer);
+                view.map?.add(layer);
                 created.push(layer);
                 oiLayers.push(layer);
 
@@ -151,7 +152,7 @@ export function Setup360OnView(view: MapView) {
             const hit = await view.hitTest(ev, { include: oiLayers });
 
             const graphics = hit.results
-                .map((r) => r.graphic)
+                .map((r) => (r as any).graphic || (r as __esri.GraphicHit).graphic)
                 .filter((g) => {
                     const lyr: any = g?.layer;
                     return lyr && lyr.type === "feature" && String(lyr.id || "").startsWith("oi:") && g.attributes;
@@ -260,7 +261,7 @@ export function Setup360OnView(view: MapView) {
         // remove só as layers criadas por este setup (não remove se já existiam)
         for (const lyr of created) {
             try {
-                view.map.remove(lyr);
+                view.map?.remove(lyr);
                 lyr.destroy?.();
             } catch { }
         }
