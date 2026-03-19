@@ -3,11 +3,12 @@ import Map from "@arcgis/core/Map";
 import MapView from "@arcgis/core/views/MapView";
 import WebTileLayer from "@arcgis/core/layers/WebTileLayer";
 import Swipe from "@arcgis/core/widgets/Swipe";
-//import "@arcgis/core/assets/esri/themes/light/main.css";
+// import "@arcgis/core/assets/esri/themes/light/main.css";
 import MosaicCalendar from "./MosaicCalendar";
 import Search from "@arcgis/core/widgets/Search";
 import Compass from "@arcgis/core/widgets/Compass";
 import "./TileSwipeViewer.css";
+import { CONFIG } from "../../core/config";
 
 interface Props {
   leftTileUrl: string;
@@ -45,9 +46,26 @@ export default function TileSwipeViewer({
   const [labelLeft, setLabelLeft] = useState(titleLeft);
   const [labelRight, setLabelRight] = useState(titleRight);
 
-  // 📆 Seleção persistente de mês/ano (mantém ativo mesmo ao fechar)
+  // 📆 Seleção persistente de mês/ano
   const [selectedLeft, setSelectedLeft] = useState<{ year: number; month: number } | null>(null);
   const [selectedRight, setSelectedRight] = useState<{ year: number; month: number } | null>(null);
+
+  // 🔄 Sincroniza props -> estado interno
+  useEffect(() => {
+    setCurrentLeft(leftTileUrl);
+  }, [leftTileUrl]);
+
+  useEffect(() => {
+    setCurrentRight(rightTileUrl);
+  }, [rightTileUrl]);
+
+  useEffect(() => {
+    setLabelLeft(titleLeft);
+  }, [titleLeft]);
+
+  useEffect(() => {
+    setLabelRight(titleRight);
+  }, [titleRight]);
 
   /** 🔧 Inicializa mapa e Swipe */
   useEffect(() => {
@@ -55,7 +73,6 @@ export default function TileSwipeViewer({
 
     const map = new Map({ basemap: "hybrid" });
 
-    // Se não temos um viewpoint inicial, aplicamos o centro e zoom padrão
     const defaultProps = initialViewpoint
       ? { viewpoint: initialViewpoint }
       : {
@@ -67,7 +84,7 @@ export default function TileSwipeViewer({
           xmax: -30,
           ymax: 10,
           spatialReference: { wkid: 4326 },
-        }
+        },
       };
 
     const view = new MapView({
@@ -97,7 +114,7 @@ export default function TileSwipeViewer({
     const compass = new Compass({ view });
     view.ui.add(compass, "top-right");
 
-    // 🗺️ Camadas
+    // 🗺️ Camadas iniciais
     const leftLayer = new WebTileLayer({
       urlTemplate: currentLeft || "",
       title: "Mosaico Esquerdo",
@@ -130,20 +147,22 @@ export default function TileSwipeViewer({
       Object.assign(container.style, {
         borderRadius: "10%",
         overflow: "hidden",
-
       });
     }
 
     view.when(() => {
-      if (initialViewpoint && initialViewpoint.rotation) {
+      if (initialViewpoint?.rotation) {
         view.rotation = initialViewpoint.rotation;
       }
-      if (onViewReady) onViewReady(view);
+      onViewReady?.(view);
     });
 
     return () => {
       swipe.destroy();
       view.destroy();
+      viewRef.current = null;
+      leftLayerRef.current = null;
+      rightLayerRef.current = null;
     };
   }, []);
 
@@ -151,6 +170,7 @@ export default function TileSwipeViewer({
   useEffect(() => {
     if (leftLayerRef.current && currentLeft) {
       leftLayerRef.current.urlTemplate = currentLeft;
+      leftLayerRef.current.visible = true;
       leftLayerRef.current.refresh();
     }
   }, [currentLeft]);
@@ -158,23 +178,25 @@ export default function TileSwipeViewer({
   useEffect(() => {
     if (rightLayerRef.current && currentRight) {
       rightLayerRef.current.urlTemplate = currentRight;
+      rightLayerRef.current.visible = true;
       rightLayerRef.current.refresh();
     }
   }, [currentRight]);
 
   /** 📅 Seleção de mosaico esquerdo */
   const handleSelectLeft = (mosaic: any) => {
-    if (!mosaic?.tileUrl) return;
-    setCurrentLeft(mosaic.tileUrl);
+    if (!mosaic?.id) return;
 
-    // 🔄 Converte de "YYYY-MM" → "MM/YYYY"
+    setCurrentLeft(
+      `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaic.id}`
+    );
+
     let formatted = mosaic.when || mosaic.label || "Sem data";
     const match = String(formatted).match(/(\d{4})[-_/\.](\d{2})/);
     if (match) formatted = `${match[2]}/${match[1]}`;
 
     setLabelLeft(formatted);
 
-    // 📌 Atualiza o estado de seleção persistente
     if (mosaic.year && mosaic.month) {
       setSelectedLeft({ year: mosaic.year, month: mosaic.month });
     }
@@ -184,8 +206,11 @@ export default function TileSwipeViewer({
 
   /** 📅 Seleção de mosaico direito */
   const handleSelectRight = (mosaic: any) => {
-    if (!mosaic?.tileUrl) return;
-    setCurrentRight(mosaic.tileUrl);
+    if (!mosaic?.id) return;
+
+    setCurrentRight(
+      `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaic.id}`
+    );
 
     let formatted = mosaic.when || mosaic.label || "Sem data";
     const match = String(formatted).match(/(\d{4})[-_/\.](\d{2})/);
@@ -200,15 +225,10 @@ export default function TileSwipeViewer({
     setShowRightCalendar(false);
   };
 
-  /* --------------------------------------------
-     Renderização
-  --------------------------------------------- */
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      {/* 🗺️ Mapa */}
       <div ref={mapDiv} style={{ width: "100%", height: "100%" }} />
 
-      {/* 📍 Label esquerdo */}
       <div className="calendario-botao-esquerdo">
         <button
           onClick={() => {
@@ -222,7 +242,6 @@ export default function TileSwipeViewer({
         <span>{labelLeft}</span>
       </div>
 
-      {/* 📍 Label direito */}
       <div className="calendario-botao-direito">
         <button
           onClick={() => {
@@ -236,7 +255,6 @@ export default function TileSwipeViewer({
         <span>{labelRight}</span>
       </div>
 
-      {/* 📅 Calendário esquerdo */}
       {showLeftCalendar && (
         <div
           style={{
@@ -262,7 +280,6 @@ export default function TileSwipeViewer({
         </div>
       )}
 
-      {/* 📅 Calendário direito */}
       {showRightCalendar && (
         <div
           style={{

@@ -57,7 +57,7 @@ const SwipePage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const api = import.meta.env.VITE_API_URL || "http://localhost:3001";
+        const api = import.meta.env.VITE_API_URL || "https://obra360.dnit.gov.br:3001";
         const [planetRes, featuresRes] = await Promise.all([
           fetch(`${api}/planet/mosaics`),
           fetch(`${api}/features`),
@@ -123,7 +123,7 @@ const SwipePage: React.FC = () => {
   if (erro) return <p>{erro}</p>;
 
   /* 3️⃣ URLs dos mosaicos */
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3001";
+  const apiBase = import.meta.env.VITE_API_URL || "https://obra360.dnit.gov.br:3001";
   const leftUrl = leftTileUrl
     ? `${apiBase}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaics.find(
       (m) => m.tileUrl === leftTileUrl

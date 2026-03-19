@@ -11,6 +11,7 @@ import Viewpoint from "@arcgis/core/Viewpoint";
 import "./SwipePage.css";
 import { useAppStore } from "../../core/store";
 import { CONFIG } from "../../core/config";
+import { Setup360OnView } from "../imagem_360/Setup360OnView";
 
 type LayerItem = {
     id: string;
@@ -56,6 +57,16 @@ const SwipePage: React.FC = () => {
     const swipeViewRef = useRef<MapView | null>(null);
     const leftViewRef = useRef<MapView | null>(null);
     const rightViewRef = useRef<MapView | null>(null);
+
+    // cleanups do Setup360OnView
+    const swipeSetupCleanupRef = useRef<null | (() => void)>(null);
+    const leftSetupCleanupRef = useRef<null | (() => void)>(null);
+    const rightSetupCleanupRef = useRef<null | (() => void)>(null);
+
+    // tokens para invalidar inicializações antigas
+    const swipeInitTokenRef = useRef(0);
+    const leftInitTokenRef = useRef(0);
+    const rightInitTokenRef = useRef(0);
 
     // camadas ativas
     const [activeFeatureUrls, setActiveFeatureUrls] = useState<string[]>([]);
@@ -148,6 +159,24 @@ const SwipePage: React.FC = () => {
         fetchMapImageLayers();
     }, []);
 
+    /* cleanup geral ao desmontar */
+    useEffect(() => {
+        return () => {
+            swipeInitTokenRef.current += 1;
+            leftInitTokenRef.current += 1;
+            rightInitTokenRef.current += 1;
+
+            swipeSetupCleanupRef.current?.();
+            swipeSetupCleanupRef.current = null;
+
+            leftSetupCleanupRef.current?.();
+            leftSetupCleanupRef.current = null;
+
+            rightSetupCleanupRef.current?.();
+            rightSetupCleanupRef.current = null;
+        };
+    }, []);
+
     /* helper: views ativas */
     const getActiveViews = (): MapView[] => {
         if (dualMode) {
@@ -158,6 +187,27 @@ const SwipePage: React.FC = () => {
         }
 
         return swipeViewRef.current ? [swipeViewRef.current] : [];
+    };
+
+    const init360OnView = (
+        view: MapView,
+        cleanupRef: React.MutableRefObject<null | (() => void)>,
+        tokenRef: React.MutableRefObject<number>,
+        label: string
+    ) => {
+        tokenRef.current += 1;
+        const token = tokenRef.current;
+
+        cleanupRef.current?.();
+        cleanupRef.current = null;
+
+        view.when().then(() => {
+            if (tokenRef.current !== token) return;
+
+            cleanupRef.current = Setup360OnView(view);
+        }).catch((err) => {
+            console.error(`view.when() falhou no SwipePage (${label}):`, err);
+        });
     };
 
     /* add/remove feature layer */
@@ -294,11 +344,24 @@ const SwipePage: React.FC = () => {
             if (swipeViewRef.current?.viewpoint) {
                 lastViewpointRef.current = swipeViewRef.current.viewpoint.clone();
             }
+
+            swipeInitTokenRef.current += 1;
+            swipeSetupCleanupRef.current?.();
+            swipeSetupCleanupRef.current = null;
         } else {
             // Saindo de 2 Mapas -> Voltando para Swipe
             if (leftViewRef.current?.viewpoint) {
                 lastViewpointRef.current = leftViewRef.current.viewpoint.clone();
             }
+
+            leftInitTokenRef.current += 1;
+            rightInitTokenRef.current += 1;
+
+            leftSetupCleanupRef.current?.();
+            leftSetupCleanupRef.current = null;
+
+            rightSetupCleanupRef.current?.();
+            rightSetupCleanupRef.current = null;
         }
 
         setMapReady(false);
@@ -332,6 +395,13 @@ const SwipePage: React.FC = () => {
                                     rightViewRef.current = null;
 
                                     reapplyActiveLayers([view]);
+                                    init360OnView(
+                                        view,
+                                        swipeSetupCleanupRef,
+                                        swipeInitTokenRef,
+                                        "swipe"
+                                    );
+
                                     setMapReady(true);
                                 }}
                             />
@@ -348,6 +418,21 @@ const SwipePage: React.FC = () => {
                                     rightViewRef.current = rightView;
 
                                     reapplyActiveLayers([leftView, rightView]);
+
+                                    init360OnView(
+                                        leftView,
+                                        leftSetupCleanupRef,
+                                        leftInitTokenRef,
+                                        "dual-left"
+                                    );
+
+                                    init360OnView(
+                                        rightView,
+                                        rightSetupCleanupRef,
+                                        rightInitTokenRef,
+                                        "dual-right"
+                                    );
+
                                     setMapReady(true);
                                 }}
                             />
