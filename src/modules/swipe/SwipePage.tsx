@@ -19,6 +19,22 @@ type LayerItem = {
     url: string;
 };
 
+type MapImageItem = {
+    id: string;
+    title: string;
+    url: string;
+    descricao?: string | null;
+    created?: number;
+    modified?: number;
+    serviceUrl?: string;
+    portalItemUrl?: string;
+    thumbnailUrl?: string;
+    tipo?: string;
+    owner?: string;
+    access?: string;
+    tags?: string[];
+};
+
 const SwipePage: React.FC = () => {
     /* =========================
        Planet mosaics (store)
@@ -36,13 +52,8 @@ const SwipePage: React.FC = () => {
     const [rightMosaicId, setRightMosaicId] = useState<string | null>(null);
 
     const [featureServices, setFeatureServices] = useState<LayerItem[]>([]);
-    const [mapImageServices, setMapImageServices] = useState<LayerItem[]>([]);
-
     const [erro, setErro] = useState<string | null>(null);
-    const [mapImageError, setMapImageError] = useState<string | null>(null);
-
     const [loadingFeatures, setLoadingFeatures] = useState(true);
-    const [loadingMapImages, setLoadingMapImages] = useState(true);
 
     const [mapReady, setMapReady] = useState(false);
     const [showCamadas, setShowCamadas] = useState(false);
@@ -71,6 +82,11 @@ const SwipePage: React.FC = () => {
     // camadas ativas
     const [activeFeatureUrls, setActiveFeatureUrls] = useState<string[]>([]);
     const [activeMapImageUrls, setActiveMapImageUrls] = useState<string[]>([]);
+
+    // Map Image Layers
+    const [mapImageLayers, setMapImageLayers] = useState<MapImageItem[]>([]);
+    const [mapImageLayersLoading, setMapImageLayersLoading] = useState(true);
+    const [mapImageLayersError, setMapImageLayersError] = useState<string | null>(null);
 
     /* 1️⃣ Carrega mosaics */
     useEffect(() => {
@@ -106,11 +122,11 @@ const SwipePage: React.FC = () => {
                 const data = await r.json();
 
                 const featureOnly: LayerItem[] = (data || [])
-                    .filter((f: any) => f.featureUrl)
+                    .filter((f: any) => f.featureUrl || f.serviceUrl)
                     .map((f: any) => ({
-                        id: String(f.id ?? f.title ?? f.featureUrl),
+                        id: String(f.id ?? f.title ?? f.featureUrl ?? f.serviceUrl),
                         title: f.title ?? f.name ?? "Feature Layer",
-                        url: f.featureUrl,
+                        url: f.featureUrl || f.serviceUrl,
                     }));
 
                 setFeatureServices(featureOnly);
@@ -128,31 +144,47 @@ const SwipePage: React.FC = () => {
     useEffect(() => {
         const fetchMapImageLayers = async () => {
             try {
+                setMapImageLayersLoading(true);
+                setMapImageLayersError(null);
+
                 const r = await fetch(`${CONFIG.API_BASE}/map-image-layers`, {
                     credentials: "include",
                 });
 
                 if (!r.ok) {
-                    throw new Error("Erro ao buscar Map Image Layers");
+                    throw new Error(`Erro ao buscar Map Image Layers: ${r.status}`);
                 }
 
                 const data = await r.json();
+                const items = Array.isArray(data) ? data : [];
 
-                const mapImages: LayerItem[] = (data || [])
+                const mapImages: MapImageItem[] = items
                     .filter((item: any) => item.serviceUrl || item.url)
                     .map((item: any) => ({
                         id: String(item.id ?? item.title ?? item.serviceUrl ?? item.url),
                         title: item.title ?? item.name ?? "Map Image Layer",
                         url: item.serviceUrl || item.url,
-                    }));
+                        descricao: item.descricao,
+                        created: item.created,
+                        modified: item.modified,
+                        serviceUrl: item.serviceUrl,
+                        portalItemUrl: item.portalItemUrl,
+                        thumbnailUrl: item.thumbnailUrl,
+                        tipo: item.tipo,
+                        owner: item.owner,
+                        access: item.access,
+                        tags: Array.isArray(item.tags) ? item.tags : [],
+                    }))
+                    .filter((item: MapImageItem) => !!item.url);
 
-                setMapImageServices(mapImages);
+                setMapImageLayers(mapImages);
             } catch (e) {
-                setMapImageError(
+                console.error("Erro ao carregar Map Image Layers:", e);
+                setMapImageLayersError(
                     e instanceof Error ? e.message : "Erro ao carregar Map Image Layers"
                 );
             } finally {
-                setLoadingMapImages(false);
+                setMapImageLayersLoading(false);
             }
         };
 
@@ -201,13 +233,14 @@ const SwipePage: React.FC = () => {
         cleanupRef.current?.();
         cleanupRef.current = null;
 
-        view.when().then(() => {
-            if (tokenRef.current !== token) return;
-
-            cleanupRef.current = Setup360OnView(view);
-        }).catch((err) => {
-            console.error(`view.when() falhou no SwipePage (${label}):`, err);
-        });
+        view.when()
+            .then(() => {
+                if (tokenRef.current !== token) return;
+                cleanupRef.current = Setup360OnView(view);
+            })
+            .catch((err) => {
+                console.error(`view.when() falhou no SwipePage (${label}):`, err);
+            });
     };
 
     /* add/remove feature layer */
@@ -223,7 +256,7 @@ const SwipePage: React.FC = () => {
 
                 if (!already) {
                     const layer = new FeatureLayer({ url: layerUrl, id: layerId });
-                    view.map?.add(layer);
+                    view.map?.add(layer, 9999);
                 }
             });
 
@@ -256,7 +289,12 @@ const SwipePage: React.FC = () => {
 
                 if (!already) {
                     const layer = new MapImageLayer({ url: layerUrl, id: layerId });
-                    view.map?.add(layer);
+                    
+                    const layers = view.map?.layers.toArray() || [];
+                    const firstFeatureIdx = layers.findIndex((l: any) => l.type === "feature");
+                    const insertIndex = firstFeatureIdx !== -1 ? firstFeatureIdx : layers.length;
+                    
+                    view.map?.add(layer, insertIndex);
                 }
             });
 
@@ -284,7 +322,7 @@ const SwipePage: React.FC = () => {
                 const already = view.map?.findLayerById(layerId);
 
                 if (!already) {
-                    view.map?.add(new FeatureLayer({ url, id: layerId }));
+                    view.map?.add(new FeatureLayer({ url, id: layerId }), 9999);
                 }
             });
         });
@@ -295,20 +333,67 @@ const SwipePage: React.FC = () => {
                 const already = view.map?.findLayerById(layerId);
 
                 if (!already) {
-                    view.map?.add(new MapImageLayer({ url, id: layerId }));
+                    const layer = new MapImageLayer({ url, id: layerId });
+                    
+                    const layers = view.map?.layers.toArray() || [];
+                    const firstFeatureIdx = layers.findIndex((l: any) => l.type === "feature");
+                    const insertIndex = firstFeatureIdx !== -1 ? firstFeatureIdx : layers.length;
+                    
+                    view.map?.add(layer, insertIndex);
                 }
             });
         });
     };
 
+    /* aplica todas as imagens aos mapas inicialmente (posteriormente será filtrado por calendário) */
+    const applyAllMapImageLayersToViews = async (views: MapView[]) => {
+        if (!views.length || !mapImageLayers.length) return;
+
+        const urlsAdded: string[] = [];
+
+        views.forEach((v) => {
+            mapImageLayers.forEach((item) => {
+                if (!item.url) return;
+
+                const layerId = `map-image-${item.url}`;
+                const already = v.map?.findLayerById(layerId);
+
+                if (!already) {
+                    const layer = new MapImageLayer({
+                        url: item.url,
+                        id: layerId,
+                    });
+                    
+                    const layers = v.map?.layers.toArray() || [];
+                    const firstFeatureIdx = layers.findIndex((l: any) => l.type === "feature");
+                    const insertIndex = firstFeatureIdx !== -1 ? firstFeatureIdx : layers.length;
+                    
+                    v.map?.add(layer, insertIndex);
+                }
+
+                urlsAdded.push(item.url);
+            });
+        });
+
+        setActiveMapImageUrls((prev) => {
+            const merged = new Set([...prev, ...urlsAdded]);
+            return Array.from(merged);
+        });
+
+        console.log(
+            "Todas as Map Image Layers aplicadas:",
+            mapImageLayers.map((x) => x.title)
+        );
+    };
+
     /* loading / error */
-    if (mosaicsLoading || loadingFeatures || loadingMapImages) {
+    if (mosaicsLoading || loadingFeatures || mapImageLayersLoading) {
         return <p>Carregando…</p>;
     }
 
     if (mosaicsError) return <p>{mosaicsError}</p>;
     if (erro) return <p>{erro}</p>;
-    if (mapImageError) return <p>{mapImageError}</p>;
+    if (mapImageLayersError) return <p>{mapImageLayersError}</p>;
 
     /* URLs finais */
     const left = mosaics.find((m) => m.id === leftMosaicId);
@@ -340,7 +425,6 @@ const SwipePage: React.FC = () => {
 
     const toggleDualMode = () => {
         if (!dualMode) {
-            // Saindo do Swipe -> Indo para 2 Mapas
             if (swipeViewRef.current?.viewpoint) {
                 lastViewpointRef.current = swipeViewRef.current.viewpoint.clone();
             }
@@ -349,7 +433,6 @@ const SwipePage: React.FC = () => {
             swipeSetupCleanupRef.current?.();
             swipeSetupCleanupRef.current = null;
         } else {
-            // Saindo de 2 Mapas -> Voltando para Swipe
             if (leftViewRef.current?.viewpoint) {
                 lastViewpointRef.current = leftViewRef.current.viewpoint.clone();
             }
@@ -389,12 +472,14 @@ const SwipePage: React.FC = () => {
                                 titleLeft={titleLeft}
                                 titleRight={titleRight}
                                 initialViewpoint={lastViewpointRef.current || undefined}
-                                onViewReady={(view) => {
+                                onViewReady={async (view) => {
                                     swipeViewRef.current = view;
                                     leftViewRef.current = null;
                                     rightViewRef.current = null;
 
                                     reapplyActiveLayers([view]);
+                                    await applyAllMapImageLayersToViews([view]);
+
                                     init360OnView(
                                         view,
                                         swipeSetupCleanupRef,
@@ -412,12 +497,13 @@ const SwipePage: React.FC = () => {
                                 titleLeft={titleLeft}
                                 titleRight={titleRight}
                                 initialViewpoint={lastViewpointRef.current || undefined}
-                                onViewsReady={({ leftView, rightView }) => {
+                                onViewsReady={async ({ leftView, rightView }) => {
                                     swipeViewRef.current = null;
                                     leftViewRef.current = leftView;
                                     rightViewRef.current = rightView;
 
                                     reapplyActiveLayers([leftView, rightView]);
+                                    await applyAllMapImageLayersToViews([leftView, rightView]);
 
                                     init360OnView(
                                         leftView,
@@ -459,7 +545,7 @@ const SwipePage: React.FC = () => {
 
                             <h5 style={{ marginTop: 12 }}>Map Image Layers</h5>
                             <FeatureServiceList
-                                services={mapImageServices.map((srv) => ({
+                                services={mapImageLayers.map((srv) => ({
                                     id: srv.id,
                                     title: srv.title,
                                     featureUrl: srv.url,
