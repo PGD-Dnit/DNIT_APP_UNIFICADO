@@ -1,80 +1,159 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
+import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "./MosaicCalendar.css";
 
 interface MosaicDate {
   mosaic_name?: string;
-  date?: string;   // "YYYY-MM"
-  when?: string;   // "YYYY-MM"
+  date?: string;   // "YYYY-MM-DD" ou "YYYY-MM"
+  when?: string;
   label?: string;
-  // estes dois são acrescentados na normalização:
   year?: number;
   month?: number;
+  day?: number;
+  id?: string;
 }
 
 interface Props {
   mosaics?: MosaicDate[];
   onSelect?: (mosaic: MosaicDate) => void;
+  onSelectDroneDate?: (dayKey: string) => void;
   title?: string;
   align?: "left" | "right";
-  /** seleção controlada pelo pai (ano/mês) */
-  selected?: { year: number; month: number } | null;
-  /** callback para o pai atualizar sua seleção */
-  onChangeSelected?: (sel: { year: number; month: number } | null) => void;
+  selected?: { year: number; month: number; day?: number } | null;
+  onChangeSelected?: (sel: { year: number; month: number; day?: number } | null) => void;
+  droneDates?: Set<string>;
 }
 
 export default function MosaicCalendar({
   mosaics = [],
-  onSelect = () => { },
+  onSelect = () => {},
+  onSelectDroneDate,
   title = "Mosaicos disponíveis",
   align = "right",
   selected,
   onChangeSelected,
+  droneDates,
 }: Props) {
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [uncontrolled, setUncontrolled] = useState<{ year: number; month: number } | null>(null);
+  const [uncontrolled, setUncontrolled] = useState<{ year: number; month: number; day?: number } | null>(null);
 
   const isControlled = selected !== undefined;
   const currentSelected = isControlled ? selected : uncontrolled;
 
-  // Normaliza datas (robusto p/ strings tipo "YYYY-MM qualquer coisa")
+  // Normaliza datas para YYYY-MM-DD ou YYYY-MM-01
   const normalized = useMemo(() => {
-    const arr = mosaics.map((m) => {
-      const raw = m.date || m.when || m.label || "";
-      let y = 0, mo = 0;
-      const hit = String(raw).match(/(\d{4})[-_/\.](\d{2})/);
-      if (hit) { y = parseInt(hit[1], 10); mo = parseInt(hit[2], 10); }
-      return {
-        ...m,
-        year: y,
-        month: mo,
-        label: `${String(mo).padStart(2, "0")}/${y}`,
-      };
-    }).filter(m => m.year! > 0 && m.month! > 0);
-    return arr;
+    return mosaics
+      .map((m) => {
+        const raw = m.date || m.when || m.label || "";
+        let y = 0, mo = 0, d = 1;
+
+        let hit = String(raw).match(/(\d{4})[-_/\.](\d{2})[-_/\.](\d{2})/);
+        if (hit) {
+          y = parseInt(hit[1], 10);
+          mo = parseInt(hit[2], 10);
+          d = parseInt(hit[3], 10);
+        } else {
+          hit = String(raw).match(/(\d{4})[-_/\.](\d{2})/);
+          if (hit) {
+            y = parseInt(hit[1], 10);
+            mo = parseInt(hit[2], 10);
+            // new Date(y, mo, 0) pega exatamente o último dia do mês 'mo'
+            d = new Date(y, mo, 0).getDate();
+          }
+        }
+        
+        return {
+          ...m,
+          year: y,
+          month: mo,
+          day: d,
+          label: `${String(d).padStart(2, "0")}/${String(mo).padStart(2, "0")}/${y}`,
+        };
+      })
+      .filter((m) => m.year! > 0 && m.month! > 0);
   }, [mosaics]);
 
-  // Meses disponíveis por ano
-  const availableMonths = useMemo(() => {
-    const map = new Map<number, number[]>();
-    normalized.forEach(({ year, month }) => {
-      const y = year!, mo = month!;
-      if (!map.has(y)) map.set(y, []);
-      const arr = map.get(y)!;
-      if (!arr.includes(mo)) arr.push(mo);
-    });
-    for (const [y, arr] of map) map.set(y, arr.sort((a, b) => a - b));
-    return map;
+  const availableDatesSet = useMemo(() => {
+    return new Set(normalized.map((m) => `${m.year}-${m.month}-${m.day}`));
   }, [normalized]);
 
-  // Ano inicial: se tem uma seleção, usa o ano dela; senão, último ano com dados; senão, ano atual
-  useEffect(() => {
-    if (currentSelected?.year) { setYear(currentSelected.year); return; }
-    const years = Array.from(availableMonths.keys()).sort((a, b) => a - b);
-    if (years.length) setYear(years[years.length - 1]);
-  }, [currentSelected, availableMonths]);
+  // Define a data atual baseada na seleção ou no mosaico mais recente
+  const activeDate = useMemo(() => {
+    if (currentSelected?.year && currentSelected?.month) {
+        return new Date(currentSelected.year, currentSelected.month - 1, currentSelected.day || 1);
+    }
+    if (normalized.length > 0) {
+        const sorted = [...normalized].sort((a,b) => {
+            const da = new Date(a.year!, a.month! - 1, a.day!).getTime();
+            const db = new Date(b.year!, b.month! - 1, b.day!).getTime();
+            return db - da; // decrescente (mais recente primeiro)
+        });
+        const latest = sorted[0];
+        return new Date(latest.year!, latest.month! - 1, latest.day!);
+    }
+    return new Date();
+  }, [currentSelected, normalized]);
 
-  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const handleSelectDay = (date: Date) => {
+    const y = date.getFullYear();
+    const mo = date.getMonth() + 1;
+    const d = date.getDate();
+    const dayKey = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+    // 🚁 Data de drone clicada → notifica SwipePage para aplicar as layers
+    if (droneDates && droneDates.has(dayKey) && onSelectDroneDate) {
+      onSelectDroneDate(dayKey);
+      if (isControlled) {
+        onChangeSelected?.({ year: y, month: mo, day: d });
+      } else {
+        setUncontrolled({ year: y, month: mo, day: d });
+      }
+      return;
+    }
+
+    // 🛰️ Data de mosaico Planet clicada
+    const mosaic = normalized.find((m) => m.year === y && m.month === mo && m.day === d);
+    if (mosaic) {
+      onSelect(mosaic);
+      if (isControlled) {
+        onChangeSelected?.({ year: y, month: mo, day: d });
+      } else {
+        setUncontrolled({ year: y, month: mo, day: d });
+      }
+    }
+  };
+
+  const tileDisabled = ({ date, view }: { date: Date; view: string }) => {
+    if (view === "month") {
+      const y = date.getFullYear();
+      const mo = date.getMonth() + 1;
+      const d = date.getDate();
+      const dayKey = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      // Datas drone também ficam habilitadas para clique
+      if (droneDates && droneDates.has(dayKey)) return false;
+      return !availableDatesSet.has(`${y}-${mo}-${d}`);
+    }
+    return false;
+  };
+  
+  const tileClassName = ({ date, view }: { date: Date; view: string }) => {
+    if (view === "month") {
+      const y = date.getFullYear();
+      const mo = date.getMonth() + 1;
+      const d = date.getDate();
+      const dateStr = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      
+      let classes = [];
+      if (droneDates && droneDates.has(dateStr)) {
+        classes.push("drone-date-highlight");
+      }
+      if (availableDatesSet.has(`${y}-${mo}-${d}`)) {
+        classes.push("highlight-date"); 
+      }
+      return classes.length > 0 ? classes.join(" ") : null;
+    }
+    return null;
+  };
 
   if (!normalized.length) {
     return (
@@ -84,50 +163,23 @@ export default function MosaicCalendar({
     );
   }
 
-  const setSelected = (sel: { year: number; month: number } | null) => {
-    if (isControlled) onChangeSelected?.(sel);
-    else setUncontrolled(sel);
-  };
-
-  const handleSelectMonth = (monthIndex: number) => {
-    const month = monthIndex + 1;
-    if (!availableMonths.get(year)?.includes(month)) return;
-    const mosaic = normalized.find(m => m.year === year && m.month === month);
-    if (mosaic) onSelect(mosaic);
-    setSelected({ year, month });
-  };
-
   return (
-    <div className={`calendar-view-container ${align === "left" ? "calendar-left" : "calendar-right"}`}>
-      <div className="calendar-header"><h4>{title}</h4></div>
-
-      <div className="year-selector">
-        <button onClick={() => setYear(y => y - 1)}>◀</button>
-        <span>{year}</span>
-        <button onClick={() => setYear(y => y + 1)}>▶</button>
+    <div className={`calendar-view-container ${align === "left" ? "calendar-left" : "calendar-right"}`} style={{ padding: "10px" }}>
+      <div className="calendar-header" style={{ marginBottom: 10 }}>
+        <h4 style={{ margin: 0, textAlign: "center" }}>{title}</h4>
       </div>
 
-      <div className="month-grid">
-        {months.map((mName, idx) => {
-          const month = idx + 1;
-          const isAvailable = availableMonths.get(year)?.includes(month) ?? false;
-          const isSelected = currentSelected?.year === year && currentSelected?.month === month;
-
-          return (
-            <button
-              key={idx}
-              type="button"
-              className={`month-cell ${isAvailable ? "highlight-date" : "disabled-date"} ${isSelected ? "selected-date" : ""}`}
-              onClick={() => handleSelectMonth(idx)}
-              title={isAvailable ? `Ver mosaico ${String(month).padStart(2, "0")}/${year}` : "Sem mosaico neste mês"}
-              aria-pressed={isSelected}
-              disabled={!isAvailable}
-            >
-              {mName}
-            </button>
-          );
-        })}
-      </div>
+      <Calendar 
+        onClickDay={handleSelectDay} 
+        value={activeDate}
+        tileDisabled={tileDisabled}
+        tileClassName={tileClassName}
+        minDetail="year"
+        next2Label={null}
+        prev2Label={null}
+        locale="pt-BR"
+      />
     </div>
   );
 }
+

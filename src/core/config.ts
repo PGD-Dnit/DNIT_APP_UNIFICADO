@@ -6,6 +6,7 @@ export const CONFIG = {
     "https://sig.dnit.gov.br/server/rest/services/Hosted/Imagens360_clayton/FeatureServer/0",
   API_BASE: apiBase.replace(/\/$/, ""),
   BASEMAP: "hybrid" as const,
+  //BASEMAP: "gray-vector" as const,
 } as const;
 
 console.log("CONFIG.API_BASE =", CONFIG.API_BASE);
