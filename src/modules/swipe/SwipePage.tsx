@@ -439,7 +439,9 @@ const SwipePage: React.FC = () => {
     const [mapImageLayersError, setMapImageLayersError] = useState<string | null>(null);
 
     const [selectedDroneGroupKey, setSelectedDroneGroupKey] = useState<string | null>(null);
-    const [selectedDroneDay, setSelectedDroneDay] = useState<string | null>(null);
+    const [selectedLeftDroneDay, setSelectedLeftDroneDay] = useState<string | null>(null);
+    const [selectedRightDroneDay, setSelectedRightDroneDay] = useState<string | null>(null);
+    const swipeWidgetRef = useRef<__esri.Swipe | null>(null);
 
     // 🗓️ Todas as datas drone visíveis no calendário (globalmente, sem filtro de raio)
 
@@ -667,21 +669,28 @@ const SwipePage: React.FC = () => {
         if (!selectedDroneGroupKey || !droneGroupsMap.has(selectedDroneGroupKey)) {
             const firstGroup = droneGroups[0];
             setSelectedDroneGroupKey(firstGroup.groupKey);
-            setSelectedDroneDay(firstGroup.latestItem?.dayKey ?? null);
+            setSelectedLeftDroneDay(firstGroup.latestItem?.dayKey ?? null);
+            setSelectedRightDroneDay(firstGroup.latestItem?.dayKey ?? null);
         }
     }, [droneGroups, droneGroupsMap, selectedDroneGroupKey]);
 
     useEffect(() => {
         if (!selectedDroneGroup) return;
 
-        const hasDay =
-            selectedDroneDay &&
-            selectedDroneGroup.items.some((item) => item.dayKey === selectedDroneDay);
+        let leftOk = false;
+        let rightOk = false;
 
-        if (!hasDay) {
-            setSelectedDroneDay(selectedDroneGroup.latestItem?.dayKey ?? null);
+        if (selectedLeftDroneDay && selectedDroneGroup.items.some((item) => item.dayKey === selectedLeftDroneDay)) {
+            leftOk = true;
         }
-    }, [selectedDroneGroup, selectedDroneDay]);
+        if (selectedRightDroneDay && selectedDroneGroup.items.some((item) => item.dayKey === selectedRightDroneDay)) {
+            rightOk = true;
+        }
+
+        if (!leftOk) setSelectedLeftDroneDay(selectedDroneGroup.latestItem?.dayKey ?? null);
+        if (!rightOk) setSelectedRightDroneDay(selectedDroneGroup.latestItem?.dayKey ?? null);
+
+    }, [selectedDroneGroup, selectedLeftDroneDay, selectedRightDroneDay]);
 
     const getActiveViews = (): MapView[] => {
         if (dualMode) {
@@ -758,16 +767,26 @@ const SwipePage: React.FC = () => {
                     typeof layer.id === "string" &&
                     layer.id.startsWith("map-image-")
                 ) {
+                    if (swipeWidgetRef.current && views.length === 1) {
+                        try {
+                            swipeWidgetRef.current.leadingLayers.remove(layer);
+                            swipeWidgetRef.current.trailingLayers.remove(layer);
+                        } catch (e) {}
+                    }
                     view.map?.remove(layer);
                 }
             });
         });
     };
 
-    const addMapImageLayerToViews = (views: MapView[], item: MapImageItem) => {
+    const addMapImageLayerToViews = (
+        views: MapView[],
+        item: MapImageItem,
+        side: "left" | "right" | "both" = "both"
+    ) => {
         if (!item.url) return;
 
-        const layerId = `map-image-${item.url}`;
+        const layerId = `map-image-${side}-${item.url}`;
 
         views.forEach((view) => {
             const already = view.map?.findLayerById(layerId);
@@ -783,6 +802,11 @@ const SwipePage: React.FC = () => {
                 const insertIndex = firstFeatureIdx !== -1 ? firstFeatureIdx : layers.length;
 
                 view.map?.add(layer, insertIndex);
+
+                if (swipeWidgetRef.current && views.length === 1) {
+                    if (side === "left") swipeWidgetRef.current.leadingLayers.add(layer);
+                    else if (side === "right") swipeWidgetRef.current.trailingLayers.add(layer);
+                }
             }
         });
     };
@@ -805,7 +829,8 @@ const SwipePage: React.FC = () => {
     const applyDroneSelectionToViews = async (
         views: MapView[],
         groupKey: string | null,
-        dayKey: string | null
+        leftDayKey: string | null,
+        rightDayKey: string | null
     ) => {
         if (!views.length) return;
 
@@ -820,8 +845,14 @@ const SwipePage: React.FC = () => {
             return;
         }
 
-        const itemsFromSelectedGroup = dayKey
-            ? group.items.filter((item) => item.dayKey === dayKey)
+        const leftItems = leftDayKey
+            ? group.items.filter((item) => item.dayKey === leftDayKey)
+            : group.latestItem
+                ? [group.latestItem]
+                : [];
+
+        const rightItems = rightDayKey
+            ? group.items.filter((item) => item.dayKey === rightDayKey)
             : group.latestItem
                 ? [group.latestItem]
                 : [];
@@ -830,16 +861,20 @@ const SwipePage: React.FC = () => {
             (item) => !group.items.some((gItem) => gItem.id === item.id)
         );
 
-        const finalItems = [...latestOtherGroups, ...itemsFromSelectedGroup];
-
         removeAllDroneLayersFromViews(views);
 
         const uniqueUrls = new Set<string>();
 
-        finalItems.forEach((item) => {
-            addMapImageLayerToViews(views, item);
-            uniqueUrls.add(item.url);
-        });
+        if (views.length === 2) {
+            leftItems.forEach((item) => { addMapImageLayerToViews([views[0]], item, "left"); uniqueUrls.add(item.url); });
+            rightItems.forEach((item) => { addMapImageLayerToViews([views[1]], item, "right"); uniqueUrls.add(item.url); });
+            latestOtherGroups.forEach((item) => { addMapImageLayerToViews(views, item, "both"); uniqueUrls.add(item.url); });
+        } else if (views.length === 1) {
+            const view = views[0];
+            leftItems.forEach((item) => { addMapImageLayerToViews([view], item, "left"); uniqueUrls.add(item.url); });
+            rightItems.forEach((item) => { addMapImageLayerToViews([view], item, "right"); uniqueUrls.add(item.url); });
+            latestOtherGroups.forEach((item) => { addMapImageLayerToViews([view], item, "both"); uniqueUrls.add(item.url); });
+        }
 
         setActiveMapImageUrls(Array.from(uniqueUrls));
     };
@@ -898,12 +933,13 @@ const SwipePage: React.FC = () => {
         const views = getActiveViews();
         if (!views.length || !mapReady) return;
 
-        applyDroneSelectionToViews(views, selectedDroneGroupKey, selectedDroneDay);
+        applyDroneSelectionToViews(views, selectedDroneGroupKey, selectedLeftDroneDay, selectedRightDroneDay);
     }, [
         mapReady,
         dualMode,
         selectedDroneGroupKey,
-        selectedDroneDay,
+        selectedLeftDroneDay,
+        selectedRightDroneDay,
         latestMapImageByGroup,
         droneGroupsMap,
     ]);
@@ -911,7 +947,7 @@ const SwipePage: React.FC = () => {
     // (droneDatesSet removido: nearbyDroneDates é usado no lugar, populado pelo watcher de proximidade)
 
     // 🚁 Handler: clique em data drone no calendário aplica as layers correspondentes
-    const handleDroneDateClick = (dayKey: string) => {
+    const handleDroneDateClick = (side: "left" | "right", dayKey: string) => {
         const views = getActiveViews();
         if (!views.length) return;
 
@@ -922,8 +958,16 @@ const SwipePage: React.FC = () => {
 
         const groupKey = matchingGroup?.groupKey ?? null;
         setSelectedDroneGroupKey(groupKey);
-        setSelectedDroneDay(dayKey);
-        applyDroneSelectionToViews(views, groupKey, dayKey);
+
+        if (side === "left") setSelectedLeftDroneDay(dayKey);
+        else setSelectedRightDroneDay(dayKey);
+
+        applyDroneSelectionToViews(
+            views,
+            groupKey,
+            side === "left" ? dayKey : selectedLeftDroneDay,
+            side === "right" ? dayKey : selectedRightDroneDay
+        );
     };
 
     if (mosaicsLoading || loadingFeatures || mapImageLayersLoading) {
@@ -1013,7 +1057,7 @@ const SwipePage: React.FC = () => {
                     title={dualMode ? "Voltar para Swipe" : "Travar swipe e usar 2 mapas independentes"}
                     onClick={toggleDualMode}
                 >
-                    {dualMode ? "Voltar Swipe" : "2 Mapas"}
+                    {dualMode ? <i className="fa-solid fa-lock"></i> : <i className="fa-solid fa-lock-open"></i>}
                 </button>
 
                 {leftUrl && rightUrl ? (
@@ -1036,8 +1080,9 @@ const SwipePage: React.FC = () => {
                                         setRightMosaicId(mosaicId);
                                     }
                                 }}
-                                onViewReady={async (view) => {
+                                onViewReady={async (view, swipeWidget) => {
                                     swipeViewRef.current = view;
+                                    swipeWidgetRef.current = swipeWidget; // 👈 Salva o widget
                                     leftViewRef.current = null;
                                     rightViewRef.current = null;
 
@@ -1045,7 +1090,8 @@ const SwipePage: React.FC = () => {
                                     await applyDroneSelectionToViews(
                                         [view],
                                         selectedDroneGroupKey,
-                                        selectedDroneDay
+                                        selectedLeftDroneDay,
+                                        selectedRightDroneDay
                                     );
 
                                     init360OnView(
@@ -1085,7 +1131,8 @@ const SwipePage: React.FC = () => {
                                     await applyDroneSelectionToViews(
                                         [leftView, rightView],
                                         selectedDroneGroupKey,
-                                        selectedDroneDay
+                                        selectedLeftDroneDay,
+                                        selectedRightDroneDay
                                     );
 
                                     init360OnView(
@@ -1138,7 +1185,8 @@ const SwipePage: React.FC = () => {
                                             type="button"
                                             onClick={() => {
                                                 setSelectedDroneGroupKey(group.groupKey);
-                                                setSelectedDroneDay(latest?.dayKey ?? null);
+                                                setSelectedLeftDroneDay(latest?.dayKey ?? null);
+                                                setSelectedRightDroneDay(latest?.dayKey ?? null);
                                             }}
                                             style={{
                                                 textAlign: "left",
@@ -1170,15 +1218,18 @@ const SwipePage: React.FC = () => {
                                             <button
                                                 key={day}
                                                 type="button"
-                                                onClick={() => setSelectedDroneDay(day)}
+                                                onClick={() => {
+                                                    setSelectedLeftDroneDay(day);
+                                                    setSelectedRightDroneDay(day);
+                                                }}
                                                 style={{
                                                     textAlign: "left",
-                                                    fontWeight: selectedDroneDay === day ? 700 : 400,
+                                                    fontWeight: (selectedLeftDroneDay === day || selectedRightDroneDay === day) ? 700 : 400,
                                                     padding: "6px 8px",
                                                     borderRadius: 6,
                                                     border: "1px solid #d1d5db",
                                                     background:
-                                                        selectedDroneDay === day ? "#dcfce7" : "#fff",
+                                                        (selectedLeftDroneDay === day || selectedRightDroneDay === day) ? "#dcfce7" : "#fff",
                                                     cursor: "pointer",
                                                 }}
                                             >

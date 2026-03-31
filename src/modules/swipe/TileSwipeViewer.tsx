@@ -17,10 +17,10 @@ interface Props {
   titleRight?: string;
   mosaics?: any[];
   initialViewpoint?: __esri.Viewpoint;
-  onViewReady?: (view: __esri.MapView) => void;
+  onViewReady?: (view: __esri.MapView, swipeWidget: __esri.Swipe) => void;
   onMosaicChange?: (side: "left" | "right", mosaicId: string) => void;
   droneDates?: Set<string>;
-  onDroneDateClick?: (dayKey: string) => void;
+  onDroneDateClick?: (side: "left" | "right", dayKey: string) => void;
 }
 
 export default function TileSwipeViewer({
@@ -145,7 +145,7 @@ export default function TileSwipeViewer({
       if (initialViewpoint && initialViewpoint.rotation) {
         view.rotation = initialViewpoint.rotation;
       }
-      if (onViewReady) onViewReady(view);
+      if (onViewReady) onViewReady(view, swipe);
     });
 
     return () => {
@@ -272,7 +272,16 @@ export default function TileSwipeViewer({
             onChangeSelected={setSelectedLeft}
             onSelect={handleSelectLeft}
             droneDates={droneDates}
-            onSelectDroneDate={onDroneDateClick}
+            onSelectDroneDate={(dayKey) => {
+              onDroneDateClick?.("left", dayKey);
+              
+              const partes = dayKey.split("-");
+              if (partes.length === 3) {
+                setLabelLeft(`${partes[2]}/${partes[1]}/${partes[0]}`);
+              }
+              
+              setShowLeftCalendar(false);
+            }}
           />
         </div>
       )}
@@ -300,7 +309,16 @@ export default function TileSwipeViewer({
             onChangeSelected={setSelectedRight}
             onSelect={handleSelectRight}
             droneDates={droneDates}
-            onSelectDroneDate={onDroneDateClick}
+            onSelectDroneDate={(dayKey) => {
+              onDroneDateClick?.("right", dayKey);
+              
+              const partes = dayKey.split("-");
+              if (partes.length === 3) {
+                setLabelRight(`${partes[2]}/${partes[1]}/${partes[0]}`);
+              }
+              
+              setShowRightCalendar(false);
+            }}
           />
         </div>
       )}

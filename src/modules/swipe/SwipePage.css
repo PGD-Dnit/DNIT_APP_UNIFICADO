@@ -234,7 +234,7 @@ topbar {
 .btn-dualmode {
   position: absolute;
   z-index: 90;
-  top: 12px;
+  top: 300px;
   left: 12px;
   padding: 8px 10px;
   border-radius: 8px;

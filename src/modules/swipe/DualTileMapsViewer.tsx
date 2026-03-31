@@ -19,7 +19,7 @@ interface Props {
     mosaics?: any[];
     initialViewpoint?: __esri.Viewpoint;
     droneDates?: Set<string>;
-    onDroneDateClick?: (dayKey: string) => void;
+    onDroneDateClick?: (side: "left" | "right", dayKey: string) => void;
     onMosaicChange?: (side: "left" | "right", mosaicId: string) => void;
     onViewsReady?: (views: {
         leftView: __esri.MapView;
@@ -403,7 +403,7 @@ export default function DualTileMapsViewer({
                             title="Calendário esquerdo"
                             align="left"
                             onSelect={handleSelectLeft}
-                            onSelectDroneDate={onDroneDateClick}
+                            onSelectDroneDate={(dayKey) => onDroneDateClick?.("left", dayKey)}
                             selected={selectedLeft}
                             onChangeSelected={setSelectedLeft}
                             droneDates={droneDates}
@@ -445,7 +445,7 @@ export default function DualTileMapsViewer({
                             title="Calendário direito"
                             align="right"
                             onSelect={handleSelectRight}
-                            onSelectDroneDate={onDroneDateClick}
+                            onSelectDroneDate={(dayKey) => onDroneDateClick?.("right", dayKey)}
                             selected={selectedRight}
                             onChangeSelected={setSelectedRight}
                             droneDates={droneDates}
