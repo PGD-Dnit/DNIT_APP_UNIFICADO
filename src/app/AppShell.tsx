@@ -47,7 +47,7 @@ export default function AppShell() {
         <MapBase />
 
         {/* ✅ menu lateral por cima do mapa */}
-        <SideNav />
+        {/*<SideNav />*/}
 
         {/* ✅ Overlay Swipe: só monta quando está em Swipe (serviço nasce/morre junto) */}
         {inSwipe && (

@@ -91,7 +91,7 @@ type State = {
 };
 
 export const useAppStore = create<State>((set, get) => ({
-    activeMode: "map",
+    activeMode: "swipe",
     setActiveMode: (m) => set({ activeMode: m }),
 
     mapView: null,

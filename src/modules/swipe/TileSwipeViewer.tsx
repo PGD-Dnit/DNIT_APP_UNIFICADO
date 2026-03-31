@@ -254,8 +254,8 @@ export default function TileSwipeViewer({
         <div
           style={{
             position: "absolute",
-            bottom: 90,
-            left: "20%",
+            bottom: 95,
+            left: "19%",
             background: "var(--panel, #fff)",
             borderRadius: 12,
             boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
@@ -274,12 +274,12 @@ export default function TileSwipeViewer({
             droneDates={droneDates}
             onSelectDroneDate={(dayKey) => {
               onDroneDateClick?.("left", dayKey);
-              
+
               const partes = dayKey.split("-");
               if (partes.length === 3) {
                 setLabelLeft(`${partes[2]}/${partes[1]}/${partes[0]}`);
               }
-              
+
               setShowLeftCalendar(false);
             }}
           />
@@ -291,8 +291,8 @@ export default function TileSwipeViewer({
         <div
           style={{
             position: "absolute",
-            bottom: 90,
-            left: "70%",
+            bottom: 95,
+            left: "69%",
             background: "var(--panel, #fff)",
             borderRadius: 12,
             boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
@@ -311,12 +311,12 @@ export default function TileSwipeViewer({
             droneDates={droneDates}
             onSelectDroneDate={(dayKey) => {
               onDroneDateClick?.("right", dayKey);
-              
+
               const partes = dayKey.split("-");
               if (partes.length === 3) {
                 setLabelRight(`${partes[2]}/${partes[1]}/${partes[0]}`);
               }
-              
+
               setShowRightCalendar(false);
             }}
           />

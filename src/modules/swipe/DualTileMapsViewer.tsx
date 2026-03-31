@@ -387,8 +387,8 @@ export default function DualTileMapsViewer({
                     <div
                         style={{
                             position: "absolute",
-                            bottom: 90,
-                            left: "50%",
+                            bottom: 95,
+                            left: "49%",
                             transform: "translateX(-50%)",
                             background: "var(--panel, #fff)",
                             borderRadius: 12,
@@ -429,7 +429,7 @@ export default function DualTileMapsViewer({
                     <div
                         style={{
                             position: "absolute",
-                            bottom: 90,
+                            bottom: 95,
                             left: "50%",
                             transform: "translateX(-50%)",
                             background: "var(--panel, #fff)",
