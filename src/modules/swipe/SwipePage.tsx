@@ -73,8 +73,8 @@ type DroneGroup = {
 
 const STRONG_OVERLAP_THRESHOLD = 0.6;
 const OVERLAP_THRESHOLD = 0.3;
-const CENTER_DISTANCE_METERS = 200;
-const NAME_DISTANCE_METERS = 80;
+const CENTER_DISTANCE_METERS = 500;
+const NAME_DISTANCE_METERS = 200;
 
 const safeNum = (v: any): number | null => {
     const n = typeof v === "number" ? v : Number(v);
@@ -206,11 +206,18 @@ const getExtentArea = (extent: ExtentBox | null | undefined): number | null => {
     return width * height;
 };
 
+/**
+ * Retorna null se os centros não existirem OU se estiverem em CRS diferentes
+ * (wkid definido e distinto) — distância entre projeções diferentes é inválida.
+ */
 const distanceMeters = (
     a: CenterPoint | null | undefined,
     b: CenterPoint | null | undefined
 ): number | null => {
     if (!a || !b) return null;
+
+    // Se ambos têm wkid definido e são diferentes, a comparação métrica é inválida
+    if (a.wkid != null && b.wkid != null && a.wkid !== b.wkid) return null;
 
     const dx = a.x - b.x;
     const dy = a.y - b.y;
@@ -279,7 +286,11 @@ const namesLookEquivalent = (a?: string | null, b?: string | null) => {
 
 const buildSimilarity = (a: MapImageItem, b: MapImageItem) => {
     const overlapPct = getIntersectionPctOnSmaller(a.fullExtent, b.fullExtent);
+
+    // distanceMeters retorna null se os CRS forem diferentes — evita comparação inválida
     const centerDist = distanceMeters(a.center, b.center);
+
+    // Nome normalizado idêntico emqualquer um dos campos identificadores
     const sameLogicalName =
         namesLookEquivalent(a.pointKey, b.pointKey) ||
         namesLookEquivalent(a.pointName, b.pointName) ||
@@ -297,7 +308,14 @@ const buildSimilarity = (a: MapImageItem, b: MapImageItem) => {
         centerDist <= NAME_DISTANCE_METERS &&
         sameLogicalName;
 
-    const isSameGroup = strongOverlap || overlapAndNear || nearAndSameName;
+    // Fallback: nome idêntico E sem distância confiável (CRS distintos ou sem extent)
+    // Usa apenas o pointKey (campo mais normalizado) para evitar falsos positivos
+    const sameNameOnly =
+        sameLogicalName &&
+        centerDist === null &&
+        namesLookEquivalent(a.pointKey, b.pointKey);
+
+    const isSameGroup = strongOverlap || overlapAndNear || nearAndSameName || sameNameOnly;
 
     return {
         overlapPct,
@@ -306,6 +324,7 @@ const buildSimilarity = (a: MapImageItem, b: MapImageItem) => {
         strongOverlap,
         overlapAndNear,
         nearAndSameName,
+        sameNameOnly,
         isSameGroup,
     };
 };
@@ -399,6 +418,11 @@ const groupDroneImages = (items: MapImageItem[]): DroneGroup[] => {
     });
 };
 
+const formatCoord = (value: number | null | undefined) => {
+    if (value == null || !Number.isFinite(value)) return "—";
+    return value.toFixed(2);
+};
+
 const SwipePage: React.FC = () => {
     const mosaics = useAppStore((s) => s.planetMosaics);
     const mosaicsLoading = useAppStore((s) => s.planetMosaicsLoading);
@@ -443,18 +467,15 @@ const SwipePage: React.FC = () => {
     const [selectedRightDroneDay, setSelectedRightDroneDay] = useState<string | null>(null);
     const swipeWidgetRef = useRef<__esri.Swipe | null>(null);
 
-    // 🗓️ Todas as datas drone visíveis no calendário (globalmente, sem filtro de raio)
-
-    // 🛑 Supressão inofensiva de erros crônicos de Hot-Reload do ArcGIS JS no React
     useEffect(() => {
         const handler = (event: PromiseRejectionEvent) => {
             const r = event.reason;
             if (
                 r &&
                 (r.name === "AbortError" ||
-                 r.name === "cancelled:layerview-create" ||
-                 r.message?.includes("AbortError") ||
-                 r.message?.includes("layerview creation cancelled"))
+                    r.name === "cancelled:layerview-create" ||
+                    r.message?.includes("AbortError") ||
+                    r.message?.includes("layerview creation cancelled"))
             ) {
                 event.preventDefault();
             }
@@ -462,7 +483,6 @@ const SwipePage: React.FC = () => {
         window.addEventListener("unhandledrejection", handler);
         return () => window.removeEventListener("unhandledrejection", handler);
     }, []);
-
 
     useEffect(() => {
         loadPlanetMosaics();
@@ -480,12 +500,14 @@ const SwipePage: React.FC = () => {
             setRightMosaicId((mosaics[0] || mosaics[0]).id);
         }
 
-        // --- Console log para depuração ---
-        console.log("🔍 [DEBUG] Mosaicos carregados da API:", mosaics.map(m => ({
-            id: m.id,
-            when: m.when,
-            label: (m as any).label
-        })));
+        console.log(
+            "🔍 [DEBUG] Mosaicos carregados da API:",
+            mosaics.map((m) => ({
+                id: m.id,
+                when: m.when,
+                label: (m as any).label,
+            }))
+        );
     }, [mosaics, leftMosaicId, rightMosaicId, setPlanetSelectedId]);
 
     useEffect(() => {
@@ -637,7 +659,6 @@ const SwipePage: React.FC = () => {
         return selectedDroneGroupKey ? droneGroupsMap.get(selectedDroneGroupKey) ?? null : null;
     }, [selectedDroneGroupKey, droneGroupsMap]);
 
-    // 🗓️ Datas de drone do grupo atualmente selecionado (respeitando a região da obra)
     const activeGroupDroneDatesSet = useMemo(() => {
         const dates = new Set<string>();
         if (selectedDroneGroup) {
@@ -660,9 +681,6 @@ const SwipePage: React.FC = () => {
         return Array.from(unique).sort((a, b) => b.localeCompare(a));
     }, [selectedDroneGroup]);
 
-    // (O watcher de proximidade foi removido. Agora todas as datas drone acendem no calendário)
-
-
     useEffect(() => {
         if (!droneGroups.length) return;
 
@@ -680,16 +698,21 @@ const SwipePage: React.FC = () => {
         let leftOk = false;
         let rightOk = false;
 
-        if (selectedLeftDroneDay && selectedDroneGroup.items.some((item) => item.dayKey === selectedLeftDroneDay)) {
+        if (
+            selectedLeftDroneDay &&
+            selectedDroneGroup.items.some((item) => item.dayKey === selectedLeftDroneDay)
+        ) {
             leftOk = true;
         }
-        if (selectedRightDroneDay && selectedDroneGroup.items.some((item) => item.dayKey === selectedRightDroneDay)) {
+        if (
+            selectedRightDroneDay &&
+            selectedDroneGroup.items.some((item) => item.dayKey === selectedRightDroneDay)
+        ) {
             rightOk = true;
         }
 
         if (!leftOk) setSelectedLeftDroneDay(selectedDroneGroup.latestItem?.dayKey ?? null);
         if (!rightOk) setSelectedRightDroneDay(selectedDroneGroup.latestItem?.dayKey ?? null);
-
     }, [selectedDroneGroup, selectedLeftDroneDay, selectedRightDroneDay]);
 
     const getActiveViews = (): MapView[] => {
@@ -771,7 +794,7 @@ const SwipePage: React.FC = () => {
                         try {
                             swipeWidgetRef.current.leadingLayers.remove(layer);
                             swipeWidgetRef.current.trailingLayers.remove(layer);
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                     view.map?.remove(layer);
                 }
@@ -866,14 +889,32 @@ const SwipePage: React.FC = () => {
         const uniqueUrls = new Set<string>();
 
         if (views.length === 2) {
-            leftItems.forEach((item) => { addMapImageLayerToViews([views[0]], item, "left"); uniqueUrls.add(item.url); });
-            rightItems.forEach((item) => { addMapImageLayerToViews([views[1]], item, "right"); uniqueUrls.add(item.url); });
-            latestOtherGroups.forEach((item) => { addMapImageLayerToViews(views, item, "both"); uniqueUrls.add(item.url); });
+            leftItems.forEach((item) => {
+                addMapImageLayerToViews([views[0]], item, "left");
+                uniqueUrls.add(item.url);
+            });
+            rightItems.forEach((item) => {
+                addMapImageLayerToViews([views[1]], item, "right");
+                uniqueUrls.add(item.url);
+            });
+            latestOtherGroups.forEach((item) => {
+                addMapImageLayerToViews(views, item, "both");
+                uniqueUrls.add(item.url);
+            });
         } else if (views.length === 1) {
             const view = views[0];
-            leftItems.forEach((item) => { addMapImageLayerToViews([view], item, "left"); uniqueUrls.add(item.url); });
-            rightItems.forEach((item) => { addMapImageLayerToViews([view], item, "right"); uniqueUrls.add(item.url); });
-            latestOtherGroups.forEach((item) => { addMapImageLayerToViews([view], item, "both"); uniqueUrls.add(item.url); });
+            leftItems.forEach((item) => {
+                addMapImageLayerToViews([view], item, "left");
+                uniqueUrls.add(item.url);
+            });
+            rightItems.forEach((item) => {
+                addMapImageLayerToViews([view], item, "right");
+                uniqueUrls.add(item.url);
+            });
+            latestOtherGroups.forEach((item) => {
+                addMapImageLayerToViews([view], item, "both");
+                uniqueUrls.add(item.url);
+            });
         }
 
         setActiveMapImageUrls(Array.from(uniqueUrls));
@@ -933,7 +974,12 @@ const SwipePage: React.FC = () => {
         const views = getActiveViews();
         if (!views.length || !mapReady) return;
 
-        applyDroneSelectionToViews(views, selectedDroneGroupKey, selectedLeftDroneDay, selectedRightDroneDay);
+        applyDroneSelectionToViews(
+            views,
+            selectedDroneGroupKey,
+            selectedLeftDroneDay,
+            selectedRightDroneDay
+        );
     }, [
         mapReady,
         dualMode,
@@ -944,14 +990,10 @@ const SwipePage: React.FC = () => {
         droneGroupsMap,
     ]);
 
-    // (droneDatesSet removido: nearbyDroneDates é usado no lugar, populado pelo watcher de proximidade)
-
-    // 🚁 Handler: clique em data drone no calendário aplica as layers correspondentes
     const handleDroneDateClick = (side: "left" | "right", dayKey: string) => {
         const views = getActiveViews();
         if (!views.length) return;
 
-        // Encontra o primeiro grupo que possui aquela data
         const matchingGroup = droneGroups.find((g) =>
             g.items.some((item) => item.dayKey === dayKey)
         );
@@ -1057,7 +1099,11 @@ const SwipePage: React.FC = () => {
                     title={dualMode ? "Voltar para Swipe" : "Travar swipe e usar 2 mapas independentes"}
                     onClick={toggleDualMode}
                 >
-                    {dualMode ? <i className="fa-solid fa-lock"></i> : <i className="fa-solid fa-lock-open"></i>}
+                    {dualMode ? (
+                        <i className="fa-solid fa-lock"></i>
+                    ) : (
+                        <i className="fa-solid fa-lock-open"></i>
+                    )}
                 </button>
 
                 {leftUrl && rightUrl ? (
@@ -1082,7 +1128,7 @@ const SwipePage: React.FC = () => {
                                 }}
                                 onViewReady={async (view, swipeWidget) => {
                                     swipeViewRef.current = view;
-                                    swipeWidgetRef.current = swipeWidget; // 👈 Salva o widget
+                                    swipeWidgetRef.current = swipeWidget;
                                     leftViewRef.current = null;
                                     rightViewRef.current = null;
 
@@ -1160,98 +1206,157 @@ const SwipePage: React.FC = () => {
                             onClick={() => setShowCamadas(!showCamadas)}
                         />
 
-                        <div className={`camadas ${showCamadas ? "aberta" : "fechada"}`}>
-                            <h5>Feature Layers</h5>
-                            <FeatureServiceList
-                                services={featureServices.map((fs) => ({
-                                    id: fs.id,
-                                    title: fs.title,
-                                    featureUrl: fs.url,
-                                }))}
-                                onToggleLayer={handleToggleFeatureLayer}
-                                visible={mapReady}
-                                activeLayerUrls={activeFeatureUrls}
-                            />
-
-                            <h5 style={{ marginTop: 12 }}>Grupos Drone</h5>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                {droneGroups.map((group) => {
-                                    const latest = group.latestItem;
-                                    const count = group.items.length;
-
-                                    return (
-                                        <button
-                                            key={group.groupKey}
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedDroneGroupKey(group.groupKey);
-                                                setSelectedLeftDroneDay(latest?.dayKey ?? null);
-                                                setSelectedRightDroneDay(latest?.dayKey ?? null);
-                                            }}
-                                            style={{
-                                                textAlign: "left",
-                                                fontWeight:
-                                                    selectedDroneGroupKey === group.groupKey ? 700 : 400,
-                                                padding: "6px 8px",
-                                                borderRadius: 6,
-                                                border: "1px solid #d1d5db",
-                                                background:
-                                                    selectedDroneGroupKey === group.groupKey
-                                                        ? "#eef2ff"
-                                                        : "#fff",
-                                                cursor: "pointer",
-                                            }}
-                                        >
-                                            {group.pointName || group.pointKey}
-                                            {count > 1 ? ` [${count}]` : ""}
-                                            {latest?.dayKey ? ` (${latest.dayKey})` : ""}
-                                        </button>
-                                    );
-                                })}
+                        <aside className={`camadas ${showCamadas ? "aberta" : "fechada"}`}>
+                            <div className="camadas-header">
+                                <h4>Painel de Camadas</h4>
+                                <span className="camadas-subtitle">
+                                    Controle das layers e grupos de drone
+                                </span>
                             </div>
 
-                            {selectedDroneGroup && (
-                                <>
-                                    <h5 style={{ marginTop: 12 }}>Datas do grupo</h5>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                        {selectedGroupAvailableDays.map((day) => (
+                            <section className="camadas-section">
+                                <div className="section-title-row">
+                                    <h5>Feature Layers</h5>
+                                    <span className="section-badge">{featureServices.length}</span>
+                                </div>
+
+                                <div className="section-body">
+                                    <FeatureServiceList
+                                        services={featureServices.map((fs) => ({
+                                            id: fs.id,
+                                            title: fs.title,
+                                            featureUrl: fs.url,
+                                        }))}
+                                        onToggleLayer={handleToggleFeatureLayer}
+                                        visible={mapReady}
+                                        activeLayerUrls={activeFeatureUrls}
+                                    />
+                                </div>
+                            </section>
+
+                            <section className="camadas-section">
+                                <div className="section-title-row">
+                                    <h5>Grupos Drone</h5>
+                                    <span className="section-badge">{droneGroups.length}</span>
+                                </div>
+
+                                <div className="drone-group-list">
+                                    {droneGroups.map((group) => {
+                                        const latest = group.latestItem;
+                                        const count = group.items.length;
+                                        const isSelected = selectedDroneGroupKey === group.groupKey;
+
+                                        return (
                                             <button
-                                                key={day}
+                                                key={group.groupKey}
                                                 type="button"
+                                                className={`drone-group-card ${isSelected ? "selected" : ""}`}
                                                 onClick={() => {
-                                                    setSelectedLeftDroneDay(day);
-                                                    setSelectedRightDroneDay(day);
-                                                }}
-                                                style={{
-                                                    textAlign: "left",
-                                                    fontWeight: (selectedLeftDroneDay === day || selectedRightDroneDay === day) ? 700 : 400,
-                                                    padding: "6px 8px",
-                                                    borderRadius: 6,
-                                                    border: "1px solid #d1d5db",
-                                                    background:
-                                                        (selectedLeftDroneDay === day || selectedRightDroneDay === day) ? "#dcfce7" : "#fff",
-                                                    cursor: "pointer",
+                                                    setSelectedDroneGroupKey(group.groupKey);
+                                                    setSelectedLeftDroneDay(latest?.dayKey ?? null);
+                                                    setSelectedRightDroneDay(latest?.dayKey ?? null);
                                                 }}
                                             >
-                                                {day}
+                                                <div className="drone-group-card-top">
+                                                    <span className="drone-group-name">
+                                                        {group.pointName || group.pointKey || "Grupo sem nome"}
+                                                    </span>
+
+                                                    <span className="drone-group-count">
+                                                        {count} {count === 1 ? "item" : "itens"}
+                                                    </span>
+                                                </div>
+
+                                                <div className="drone-group-card-meta">
+                                                    <span>
+                                                        <strong>Data mais recente:</strong>{" "}
+                                                        {latest?.dayKey || "Sem data"}
+                                                    </span>
+                                                </div>
+
+                                                <div className="drone-group-card-meta">
+                                                    <span>
+                                                        <strong>Chave:</strong> {group.pointKey || "—"}
+                                                    </span>
+                                                </div>
+
+                                                {isSelected && (
+                                                    <div className="drone-group-extra">
+                                                        <div className="drone-group-extra-item">
+                                                            <strong>Centro:</strong>{" "}
+                                                            {group.representativeCenter
+                                                                ? `${formatCoord(group.representativeCenter.x)}, ${formatCoord(group.representativeCenter.y)}`
+                                                                : "Não definido"}
+                                                        </div>
+                                                        <div className="drone-group-extra-item">
+                                                            <strong>Último item:</strong>{" "}
+                                                            {latest?.title || latest?.serviceName || "—"}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </button>
-                                        ))}
+                                        );
+                                    })}
+                                </div>
+                            </section>
+
+                            {selectedDroneGroup && (
+                                <section className="camadas-section">
+                                    <div className="section-title-row">
+                                        <h5>Datas do Grupo</h5>
+                                        <span className="section-badge">
+                                            {selectedGroupAvailableDays.length}
+                                        </span>
                                     </div>
-                                </>
+
+                                    <div className="selected-group-caption">
+                                        {selectedDroneGroup.pointName || selectedDroneGroup.pointKey}
+                                    </div>
+
+                                    <div className="day-pill-list">
+                                        {selectedGroupAvailableDays.map((day) => {
+                                            const isSelected =
+                                                selectedLeftDroneDay === day ||
+                                                selectedRightDroneDay === day;
+
+                                            return (
+                                                <button
+                                                    key={day}
+                                                    type="button"
+                                                    className={`day-pill ${isSelected ? "selected" : ""}`}
+                                                    onClick={() => {
+                                                        setSelectedLeftDroneDay(day);
+                                                        setSelectedRightDroneDay(day);
+                                                    }}
+                                                >
+                                                    {day}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </section>
                             )}
 
-                            <h5 style={{ marginTop: 12 }}>Map Image Layers</h5>
-                            <FeatureServiceList
-                                services={mapImageLayers.map((srv) => ({
-                                    id: srv.id,
-                                    title: srv.title,
-                                    featureUrl: srv.url,
-                                }))}
-                                onToggleLayer={handleToggleMapImageLayer}
-                                visible={mapReady}
-                                activeLayerUrls={activeMapImageUrls}
-                            />
-                        </div>
+                            <section className="camadas-section">
+                                <div className="section-title-row">
+                                    <h5>Map Image Layers</h5>
+                                    <span className="section-badge">{mapImageLayers.length}</span>
+                                </div>
+
+                                <div className="section-body">
+                                    <FeatureServiceList
+                                        services={mapImageLayers.map((srv) => ({
+                                            id: srv.id,
+                                            title: srv.title,
+                                            featureUrl: srv.url,
+                                        }))}
+                                        onToggleLayer={handleToggleMapImageLayer}
+                                        visible={mapReady}
+                                        activeLayerUrls={activeMapImageUrls}
+                                    />
+                                </div>
+                            </section>
+                        </aside>
                     </>
                 ) : (
                     <p>Selecione dois mosaicos para comparar</p>

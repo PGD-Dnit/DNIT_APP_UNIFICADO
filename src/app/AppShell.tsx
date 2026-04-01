@@ -4,7 +4,7 @@ import { useAppStore } from "../core/store";
 
 import MapBase from "../modules/map/MapBase";
 
-import SideNav from "./SideNav"; // ajuste path
+//import SideNav from "./SideNav"; // ajuste path
 
 // ajuste estes imports para os seus componentes reais:
 import SwipePage from "../modules/swipe/SwipePage";
