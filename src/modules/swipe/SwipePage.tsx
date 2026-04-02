@@ -216,7 +216,6 @@ const distanceMeters = (
 ): number | null => {
     if (!a || !b) return null;
 
-    // Se ambos têm wkid definido e são diferentes, a comparação métrica é inválida
     if (a.wkid != null && b.wkid != null && a.wkid !== b.wkid) return null;
 
     const dx = a.x - b.x;
@@ -286,11 +285,8 @@ const namesLookEquivalent = (a?: string | null, b?: string | null) => {
 
 const buildSimilarity = (a: MapImageItem, b: MapImageItem) => {
     const overlapPct = getIntersectionPctOnSmaller(a.fullExtent, b.fullExtent);
-
-    // distanceMeters retorna null se os CRS forem diferentes — evita comparação inválida
     const centerDist = distanceMeters(a.center, b.center);
 
-    // Nome normalizado idêntico emqualquer um dos campos identificadores
     const sameLogicalName =
         namesLookEquivalent(a.pointKey, b.pointKey) ||
         namesLookEquivalent(a.pointName, b.pointName) ||
@@ -308,8 +304,6 @@ const buildSimilarity = (a: MapImageItem, b: MapImageItem) => {
         centerDist <= NAME_DISTANCE_METERS &&
         sameLogicalName;
 
-    // Fallback: nome idêntico E sem distância confiável (CRS distintos ou sem extent)
-    // Usa apenas o pointKey (campo mais normalizado) para evitar falsos positivos
     const sameNameOnly =
         sameLogicalName &&
         centerDist === null &&
@@ -334,7 +328,6 @@ const itemsAreSameSpatialGroup = (
     groupItems: MapImageItem[]
 ): boolean => {
     if (!groupItems.length) return false;
-
     return groupItems.some((existing) => buildSimilarity(candidate, existing).isSameGroup);
 };
 
@@ -497,7 +490,7 @@ const SwipePage: React.FC = () => {
         }
 
         if (!rightMosaicId) {
-            setRightMosaicId((mosaics[0] || mosaics[0]).id);
+            setRightMosaicId(mosaics[0].id);
         }
 
         console.log(
@@ -704,6 +697,7 @@ const SwipePage: React.FC = () => {
         ) {
             leftOk = true;
         }
+
         if (
             selectedRightDroneDay &&
             selectedDroneGroup.items.some((item) => item.dayKey === selectedRightDroneDay)
@@ -794,8 +788,9 @@ const SwipePage: React.FC = () => {
                         try {
                             swipeWidgetRef.current.leadingLayers.remove(layer);
                             swipeWidgetRef.current.trailingLayers.remove(layer);
-                        } catch (e) { }
+                        } catch { }
                     }
+
                     view.map?.remove(layer);
                 }
             });
@@ -809,13 +804,14 @@ const SwipePage: React.FC = () => {
     ) => {
         if (!item.url) return;
 
-        const layerId = `map-image-${side}-${item.url}`;
+        const layerId = `map-image-${item.url}`;
 
         views.forEach((view) => {
-            const already = view.map?.findLayerById(layerId);
+            const already = view.map?.findLayerById(layerId) as __esri.MapImageLayer | null;
+            let layer = already;
 
-            if (!already) {
-                const layer = new MapImageLayer({
+            if (!layer) {
+                layer = new MapImageLayer({
                     url: item.url,
                     id: layerId,
                 });
@@ -825,10 +821,16 @@ const SwipePage: React.FC = () => {
                 const insertIndex = firstFeatureIdx !== -1 ? firstFeatureIdx : layers.length;
 
                 view.map?.add(layer, insertIndex);
+            }
 
-                if (swipeWidgetRef.current && views.length === 1) {
-                    if (side === "left") swipeWidgetRef.current.leadingLayers.add(layer);
-                    else if (side === "right") swipeWidgetRef.current.trailingLayers.add(layer);
+            if (swipeWidgetRef.current && views.length === 1 && layer) {
+                const inLeading = swipeWidgetRef.current.leadingLayers.includes(layer);
+                const inTrailing = swipeWidgetRef.current.trailingLayers.includes(layer);
+
+                if (side === "left" && !inLeading) {
+                    swipeWidgetRef.current.leadingLayers.add(layer);
+                } else if (side === "right" && !inTrailing) {
+                    swipeWidgetRef.current.trailingLayers.add(layer);
                 }
             }
         });
@@ -893,24 +895,29 @@ const SwipePage: React.FC = () => {
                 addMapImageLayerToViews([views[0]], item, "left");
                 uniqueUrls.add(item.url);
             });
+
             rightItems.forEach((item) => {
                 addMapImageLayerToViews([views[1]], item, "right");
                 uniqueUrls.add(item.url);
             });
+
             latestOtherGroups.forEach((item) => {
                 addMapImageLayerToViews(views, item, "both");
                 uniqueUrls.add(item.url);
             });
         } else if (views.length === 1) {
             const view = views[0];
+
             leftItems.forEach((item) => {
                 addMapImageLayerToViews([view], item, "left");
                 uniqueUrls.add(item.url);
             });
+
             rightItems.forEach((item) => {
                 addMapImageLayerToViews([view], item, "right");
                 uniqueUrls.add(item.url);
             });
+
             latestOtherGroups.forEach((item) => {
                 addMapImageLayerToViews([view], item, "both");
                 uniqueUrls.add(item.url);
@@ -947,7 +954,15 @@ const SwipePage: React.FC = () => {
         } else {
             views.forEach((view) => {
                 const toRemove = view.map?.findLayerById(layerId);
+
                 if (toRemove) {
+                    if (swipeWidgetRef.current && views.length === 1) {
+                        try {
+                            swipeWidgetRef.current.leadingLayers.remove(toRemove as any);
+                            swipeWidgetRef.current.trailingLayers.remove(toRemove as any);
+                        } catch { }
+                    }
+
                     view.map?.remove(toRemove);
                 }
             });
@@ -965,6 +980,29 @@ const SwipePage: React.FC = () => {
 
                 if (!already) {
                     view.map?.add(new FeatureLayer({ url, id: layerId }), 9999);
+                }
+            });
+        });
+    };
+
+    const reapplyActiveMapImageLayers = (views: MapView[]) => {
+        activeMapImageUrls.forEach((url) => {
+            const layerId = `map-image-${url}`;
+
+            views.forEach((view) => {
+                const already = view.map?.findLayerById(layerId);
+
+                if (!already) {
+                    const layer = new MapImageLayer({
+                        url,
+                        id: layerId,
+                    });
+
+                    const layers = view.map?.layers.toArray() || [];
+                    const firstFeatureIdx = layers.findIndex((l: any) => l.type === "feature");
+                    const insertIndex = firstFeatureIdx !== -1 ? firstFeatureIdx : layers.length;
+
+                    view.map?.add(layer, insertIndex);
                 }
             });
         });
@@ -1001,15 +1039,13 @@ const SwipePage: React.FC = () => {
         const groupKey = matchingGroup?.groupKey ?? null;
         setSelectedDroneGroupKey(groupKey);
 
+        const nextLeftDay = side === "left" ? dayKey : selectedLeftDroneDay;
+        const nextRightDay = side === "right" ? dayKey : selectedRightDroneDay;
+
         if (side === "left") setSelectedLeftDroneDay(dayKey);
         else setSelectedRightDroneDay(dayKey);
 
-        applyDroneSelectionToViews(
-            views,
-            groupKey,
-            side === "left" ? dayKey : selectedLeftDroneDay,
-            side === "right" ? dayKey : selectedRightDroneDay
-        );
+        applyDroneSelectionToViews(views, groupKey, nextLeftDay, nextRightDay);
     };
 
     if (mosaicsLoading || loadingFeatures || mapImageLayersLoading) {
@@ -1037,6 +1073,7 @@ const SwipePage: React.FC = () => {
         ? (() => {
             const match3 = left.when.match(/(\d{4})[-_/\.](\d{2})[-_/\.](\d{2})/);
             if (match3) return `${match3[3]}/${match3[2]}/${match3[1]}`;
+
             const match2 = left.when.match(/(\d{4})[-_/\.](\d{2})/);
             if (match2) {
                 const y = parseInt(match2[1], 10);
@@ -1044,6 +1081,7 @@ const SwipePage: React.FC = () => {
                 const endD = String(new Date(y, mo, 0).getDate()).padStart(2, "0");
                 return `${endD}/${match2[2]}/${match2[1]}`;
             }
+
             return left.when;
         })()
         : "?";
@@ -1052,6 +1090,7 @@ const SwipePage: React.FC = () => {
         ? (() => {
             const match3 = right.when.match(/(\d{4})[-_/\.](\d{2})[-_/\.](\d{2})/);
             if (match3) return `${match3[3]}/${match3[2]}/${match3[1]}`;
+
             const match2 = right.when.match(/(\d{4})[-_/\.](\d{2})/);
             if (match2) {
                 const y = parseInt(match2[1], 10);
@@ -1059,6 +1098,7 @@ const SwipePage: React.FC = () => {
                 const endD = String(new Date(y, mo, 0).getDate()).padStart(2, "0");
                 return `${endD}/${match2[2]}/${match2[1]}`;
             }
+
             return right.when;
         })()
         : "?";
@@ -1133,6 +1173,8 @@ const SwipePage: React.FC = () => {
                                     rightViewRef.current = null;
 
                                     reapplyActiveLayers([view]);
+                                    reapplyActiveMapImageLayers([view]);
+
                                     await applyDroneSelectionToViews(
                                         [view],
                                         selectedDroneGroupKey,
@@ -1167,6 +1209,16 @@ const SwipePage: React.FC = () => {
                                     } else {
                                         setRightMosaicId(mosaicId);
                                     }
+
+                                    const views = getActiveViews();
+                                    if (views.length) {
+                                        applyDroneSelectionToViews(
+                                            views,
+                                            selectedDroneGroupKey,
+                                            selectedLeftDroneDay,
+                                            selectedRightDroneDay
+                                        );
+                                    }
                                 }}
                                 onViewsReady={async ({ leftView, rightView }) => {
                                     swipeViewRef.current = null;
@@ -1174,6 +1226,8 @@ const SwipePage: React.FC = () => {
                                     rightViewRef.current = rightView;
 
                                     reapplyActiveLayers([leftView, rightView]);
+                                    reapplyActiveMapImageLayers([leftView, rightView]);
+
                                     await applyDroneSelectionToViews(
                                         [leftView, rightView],
                                         selectedDroneGroupKey,

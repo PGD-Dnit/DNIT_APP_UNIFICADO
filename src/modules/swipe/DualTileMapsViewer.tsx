@@ -283,7 +283,8 @@ export default function DualTileMapsViewer({
         });
 
         leftLayerRef.current = leftLayer;
-        map.add(leftLayer);
+        // Inserir na posição 0 (base) para não cobrir as camadas drone (map-image-*)
+        map.add(leftLayer, 0);
     }, [currentLeft]);
 
     // atualiza a layer da direita sem recriar a view
@@ -309,7 +310,8 @@ export default function DualTileMapsViewer({
         });
 
         rightLayerRef.current = rightLayer;
-        map.add(rightLayer);
+        // Inserir na posição 0 (base) para não cobrir as camadas drone (map-image-*)
+        map.add(rightLayer, 0);
     }, [currentRight]);
 
     const handleSelectLeft = (mosaic: any) => {
