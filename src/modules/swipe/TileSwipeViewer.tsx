@@ -266,7 +266,7 @@ export default function TileSwipeViewer({
         >
           <MosaicCalendar
             mosaics={mosaics}
-            title="Mosaico Esquerdo"
+            title="Calendário Mosaicos/Camadas"
             align="left"
             selected={selectedLeft}
             onChangeSelected={setSelectedLeft}
@@ -303,7 +303,7 @@ export default function TileSwipeViewer({
         >
           <MosaicCalendar
             mosaics={mosaics}
-            title="Mosaico Direito"
+            title="Calendário Mosaicos/Camadas"
             align="right"
             selected={selectedRight}
             onChangeSelected={setSelectedRight}

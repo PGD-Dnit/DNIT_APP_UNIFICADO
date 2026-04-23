@@ -29,7 +29,8 @@
 .calendar-view-container .react-calendar {
   width: 100%;
   background: transparent;
-  border: none;
+  border: 1px solid #d5d5dc;
+  border-radius: 6px;
   font-family: inherit;
   color: #e8eef6;
 }
@@ -86,8 +87,9 @@
    Botões de Dias (Tiles)
 =============================== */
 .calendar-view-container .react-calendar__tile {
-  color: #e8eef6;
-  padding: 10px 6px;
+  color: #8d9093;
+  padding: 6px 6px;
+  margin: 0px 2px 2px 0px;
   background: transparent;
   border-radius: 6px;
   transition: all 0.2s;
@@ -119,11 +121,16 @@
 .calendar-view-container .react-calendar__tile--active,
 .calendar-view-container .react-calendar__tile--active:enabled:hover,
 .calendar-view-container .react-calendar__tile--active:enabled:focus {
-  background: #0078d4;
+  background: rgba(0, 120, 212, 0.15);
   color: white;
-  font-weight: bold;
-  border-radius: 6px;
-  box-shadow: 0 0 8px rgba(0, 120, 212, 0.5);
+  font-weight: 700;
+  border-radius: 8px;
+  outline: 2px solid #292a2a8f;
+  outline-offset: 2px;
+  transform: scale(1.05);
+  position: relative;
+  z-index: 1;
+  transition: all 0.2s ease;
 }
 
 /* ===============================
@@ -131,7 +138,7 @@
 =============================== */
 .calendar-view-container .react-calendar__tile.highlight-date:not(.react-calendar__tile--active) {
   background: rgba(0, 120, 212, 0.15);
-  color: #8cc3ff;
+  color: #e3f11e;
   font-weight: 600;
 }
 
@@ -167,4 +174,13 @@
 .calendar-view-container .react-calendar__month-view__weekdays__weekday {
   padding: 0;
   /* Coloque o valor que você deseja aqui, como 0.2em ou 0 */
+}
+
+.calendar-view-container .calendar-header h4 {
+  margin: 0;
+  font-size: small;
+  font-weight: 600;
+  color: #000000;
+  text-align: center;
+
 }

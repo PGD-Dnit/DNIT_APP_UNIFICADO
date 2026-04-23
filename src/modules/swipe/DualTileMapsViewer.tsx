@@ -402,7 +402,7 @@ export default function DualTileMapsViewer({
                     >
                         <MosaicCalendar
                             mosaics={mosaics}
-                            title="Calendário esquerdo"
+                            title="Calendário Mosaicos/Camadas"
                             align="left"
                             onSelect={handleSelectLeft}
                             onSelectDroneDate={(dayKey) => onDroneDateClick?.("left", dayKey)}
@@ -444,7 +444,7 @@ export default function DualTileMapsViewer({
                     >
                         <MosaicCalendar
                             mosaics={mosaics}
-                            title="Calendário direito"
+                            title="Calendário Mosaicos/Camadas"
                             align="right"
                             onSelect={handleSelectRight}
                             onSelectDroneDate={(dayKey) => onDroneDateClick?.("right", dayKey)}

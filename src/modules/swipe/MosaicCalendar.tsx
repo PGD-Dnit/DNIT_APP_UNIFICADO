@@ -27,7 +27,7 @@ interface Props {
 
 export default function MosaicCalendar({
   mosaics = [],
-  onSelect = () => {},
+  onSelect = () => { },
   onSelectDroneDate,
   title = "Mosaicos disponíveis",
   align = "right",
@@ -61,7 +61,7 @@ export default function MosaicCalendar({
             d = new Date(y, mo, 0).getDate();
           }
         }
-        
+
         return {
           ...m,
           year: y,
@@ -80,16 +80,16 @@ export default function MosaicCalendar({
   // Define a data atual baseada na seleção ou no mosaico mais recente
   const activeDate = useMemo(() => {
     if (currentSelected?.year && currentSelected?.month) {
-        return new Date(currentSelected.year, currentSelected.month - 1, currentSelected.day || 1);
+      return new Date(currentSelected.year, currentSelected.month - 1, currentSelected.day || 1);
     }
     if (normalized.length > 0) {
-        const sorted = [...normalized].sort((a,b) => {
-            const da = new Date(a.year!, a.month! - 1, a.day!).getTime();
-            const db = new Date(b.year!, b.month! - 1, b.day!).getTime();
-            return db - da; // decrescente (mais recente primeiro)
-        });
-        const latest = sorted[0];
-        return new Date(latest.year!, latest.month! - 1, latest.day!);
+      const sorted = [...normalized].sort((a, b) => {
+        const da = new Date(a.year!, a.month! - 1, a.day!).getTime();
+        const db = new Date(b.year!, b.month! - 1, b.day!).getTime();
+        return db - da; // decrescente (mais recente primeiro)
+      });
+      const latest = sorted[0];
+      return new Date(latest.year!, latest.month! - 1, latest.day!);
     }
     return new Date();
   }, [currentSelected, normalized]);
@@ -135,20 +135,20 @@ export default function MosaicCalendar({
     }
     return false;
   };
-  
+
   const tileClassName = ({ date, view }: { date: Date; view: string }) => {
     if (view === "month") {
       const y = date.getFullYear();
       const mo = date.getMonth() + 1;
       const d = date.getDate();
       const dateStr = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      
+
       let classes = [];
       if (droneDates && droneDates.has(dateStr)) {
         classes.push("drone-date-highlight");
       }
       if (availableDatesSet.has(`${y}-${mo}-${d}`)) {
-        classes.push("highlight-date"); 
+        classes.push("highlight-date");
       }
       return classes.length > 0 ? classes.join(" ") : null;
     }
@@ -164,13 +164,13 @@ export default function MosaicCalendar({
   }
 
   return (
-    <div className={`calendar-view-container ${align === "left" ? "calendar-left" : "calendar-right"}`} style={{ padding: "10px" }}>
-      <div className="calendar-header" style={{ marginBottom: 10 }}>
+    <div className={`calendar-view-container ${align === "left" ? "calendar-left" : "calendar-right"}`} style={{ padding: "3px" }}>
+      <div className="calendar-header texto" style={{ marginBottom: 3 }}>
         <h4 style={{ margin: 0, textAlign: "center" }}>{title}</h4>
       </div>
 
-      <Calendar 
-        onClickDay={handleSelectDay} 
+      <Calendar
+        onClickDay={handleSelectDay}
         value={activeDate}
         tileDisabled={tileDisabled}
         tileClassName={tileClassName}
@@ -178,6 +178,7 @@ export default function MosaicCalendar({
         next2Label={null}
         prev2Label={null}
         locale="pt-BR"
+        showNeighboringMonth={false}
       />
     </div>
   );
