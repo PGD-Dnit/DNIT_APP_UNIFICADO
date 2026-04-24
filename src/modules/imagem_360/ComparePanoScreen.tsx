@@ -1,9 +1,12 @@
 import { useEffect, useMemo } from "react";
+
 import { useAppStore } from "../../core/store";
 import DualPanoViewer from "./DualPanoViewer";
 import { MarkedCalendar } from "./MarkedCalendar";
 import { listAttachments, buildAttachmentUrl } from "../../core/apiClient";
 import MiniMap360View from "./MiniMap360View";
+import PanoToggleBtn from "./PanoToggleBtn";
+
 
 import "./ComparePanoScreen.css";
 
@@ -28,6 +31,7 @@ function sameDay(a: Date, b: Date) {
 }
 
 export default function ComparePanoScreen() {
+
   const candidateExposures = useAppStore((s) => s.candidateExposures);
 
   const leftExp = useAppStore((s) => s.selectedExposureLeft);
@@ -173,18 +177,6 @@ export default function ComparePanoScreen() {
 
   return (
     <div className="cps">
-      <div className="cps__header">
-        {/* <button type="button" className="cps__backBtn" onClick={() => setCompareOpen(false)}>
-          ⬅ Voltar
-        </button>
-
-        <div className="cps__title">Comparação 360</div>
-
-        <div className="cps__headerMeta">
-          Sobrepostos: <b>{candidateExposures.length}</b>
-        </div> */}
-      </div>
-
       <div className="cps__stage">
         {/* calendário ESQ */}
         <div className="cps__overlay cps__overlay--left">
@@ -210,6 +202,9 @@ export default function ComparePanoScreen() {
         <div className="cps__minimapWrap">
           <MiniMap360View defaultZoom={18} />
         </div>
+
+        {/* Botão Comparar/Voltar — centro inferior, compartilhado */}
+        <PanoToggleBtn />
 
         <DualPanoViewer
           leftUrl={panoLeft?.url ?? ""}

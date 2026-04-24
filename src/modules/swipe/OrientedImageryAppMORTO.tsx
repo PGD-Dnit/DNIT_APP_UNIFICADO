@@ -14,25 +14,25 @@ import TileLayer from "@arcgis/core/layers/TileLayer";
  * Um componente React pronto para usar OrientedImageryLayer + OrientedImageryViewer
  *
  * Props principais:
- * - serviceUrl: URL do seu FeatureService Oriented Imagery (ex.:
+ * - teste: URL do seu FeatureService Oriented Imagery (ex.:
  *   "https://sig.dnit.gov.br/server/rest/services/Hosted/360Images/FeatureServer")
  * - initialCenter: [lon, lat]
  * - initialZoom: número de zoom (4–18 sugerido)
  *
  * Como usar:
  * <OrientedImageryApp
- *    serviceUrl="https://sig.dnit.gov.br/server/rest/services/Hosted/360Images/FeatureServer"
+ *    teste="https://sig.dnit.gov.br/server/rest/services/Hosted/360Images/FeatureServer"
  *    initialCenter={[-47, -15]}
  *    initialZoom={6}
  * />
  */
 export default function OrientedImageryApp({
-  serviceUrl = "https://sig.dnit.gov.br/server/rest/services/Hosted/360Images/FeatureServer",
+  teste = "https://sig.dnit.gov.br/server/rest/services/Hosted/360Images/FeatureServer",
   initialCenter = [-47, -15],
   initialZoom = 6,
   height = 640,
 }: {
-  serviceUrl?: string;
+  teste?: string;
   initialCenter?: [number, number];
   initialZoom?: number;
   height?: number | string;
@@ -80,7 +80,7 @@ export default function OrientedImageryApp({
     map.add(worldImagery);
 
     // Layer de Imagens Orientadas
-    const oiLayer = new OrientedImageryLayer({ url: serviceUrl });
+    const oiLayer = new OrientedImageryLayer({ url: teste });
     map.add(oiLayer);
 
     // Viewer (igual ao do Experience Builder)
@@ -133,7 +133,7 @@ export default function OrientedImageryApp({
       view?.destroy?.();
       map.removeAll();
     };
-  }, [serviceUrl, initialCenter[0], initialCenter[1], initialZoom]);
+  }, [teste, initialCenter[0], initialCenter[1], initialZoom]);
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-3" style={{ height: typeof height === "number" ? `${height}px` : height }}>

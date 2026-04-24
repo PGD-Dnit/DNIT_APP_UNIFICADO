@@ -215,7 +215,7 @@ export function Setup360OnView(view: MapView) {
             const msgId = makeMsgId();
             const base = window.location.origin;
 
-            const url = `${base}/compare?mid=${encodeURIComponent(msgId)}`;
+            const url = `${base}/view360?mid=${encodeURIComponent(msgId)}`;
             const win = window.open(url, "_blank");
 
             if (!win) {

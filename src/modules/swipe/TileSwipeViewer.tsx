@@ -10,6 +10,7 @@ import Compass from "@arcgis/core/widgets/Compass";
 import "./TileSwipeViewer.css";
 import { CONFIG } from "../../core/config";
 
+
 interface Props {
   leftTileUrl: string;
   rightTileUrl: string;
@@ -223,30 +224,34 @@ export default function TileSwipeViewer({
 
       {/* 📍 Label esquerdo */}
       <div className="calendario-botao-esquerdo">
-        <button
-          onClick={() => {
-            setShowLeftCalendar(!showLeftCalendar);
-            setShowRightCalendar(false);
-          }}
-          title="Abrir calendário esquerdo"
-        >
-          🗓️
-        </button>
-        <span>{labelLeft}</span>
+        <div className="calendario-botao">
+          <button
+            onClick={() => {
+              setShowLeftCalendar(!showLeftCalendar);
+              setShowRightCalendar(false);
+            }}
+            title="Abrir calendário esquerdo"
+          >
+            🗓️
+          </button>
+          <span>{labelLeft}</span>
+        </div>
       </div>
 
       {/* 📍 Label direito */}
       <div className="calendario-botao-direito">
-        <button
-          onClick={() => {
-            setShowRightCalendar(!showRightCalendar);
-            setShowLeftCalendar(false);
-          }}
-          title="Abrir calendário direito"
-        >
-          🗓️
-        </button>
-        <span>{labelRight}</span>
+        <div className="calendario-botao">
+          <button
+            onClick={() => {
+              setShowRightCalendar(!showRightCalendar);
+              setShowLeftCalendar(false);
+            }}
+            title="Abrir calendário direito"
+          >
+            🗓️
+          </button>
+          <span>{labelRight}</span>
+        </div>
       </div>
 
       {/* 📅 Calendário esquerdo */}

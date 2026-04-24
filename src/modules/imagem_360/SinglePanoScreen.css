@@ -1,0 +1,61 @@
+/* src/modules/imagem_360/SinglePanoScreen.css */
+
+.sps {
+    height: 100vh;
+    width: 100%;
+    background: #0b0f14;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Área do viewer ocupa tudo */
+.sps__viewer {
+    position: absolute;
+    inset: 0;
+}
+
+
+/* Calendário — canto superior esquerdo */
+.sps__calendar {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 50;
+    pointer-events: auto;
+}
+
+.sps__calendarLabel {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.7;
+    margin-bottom: 4px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* Mini mapa — canto inferior esquerdo */
+.sps__minimap {
+    position: absolute;
+    left: 14px;
+    bottom: 60px;
+    z-index: 50;
+    pointer-events: auto;
+}
+
+/* Mensagem quando não há imagem */
+.sps__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 15px;
+}
+
+.sps__empty__icon {
+    font-size: 36px;
+    opacity: 0.3;
+}

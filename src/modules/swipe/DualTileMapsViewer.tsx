@@ -376,13 +376,15 @@ export default function DualTileMapsViewer({
                 <div ref={leftDivRef} className="dual-map" />
 
                 <div className="calendario-botao-esquerdo" style={{ left: "50%" }}>
-                    <button
-                        onClick={() => setShowLeftCalendar((v) => !v)}
-                        title="Abrir calendário esquerdo"
-                    >
-                        🗓️
-                    </button>
-                    <span>{labelLeft}</span>
+                    <div className="calendario-botao">
+                        <button
+                            onClick={() => setShowLeftCalendar((v) => !v)}
+                            title="Abrir calendário esquerdo"
+                        >
+                            🗓️
+                        </button>
+                        <span>{labelLeft}</span>
+                    </div>
                 </div>
 
                 {showLeftCalendar && (
@@ -390,7 +392,7 @@ export default function DualTileMapsViewer({
                         style={{
                             position: "absolute",
                             bottom: 95,
-                            left: "49%",
+                            left: "47.5%",
                             transform: "translateX(-50%)",
                             background: "var(--panel, #fff)",
                             borderRadius: 12,
@@ -418,13 +420,15 @@ export default function DualTileMapsViewer({
                 <div ref={rightDivRef} className="dual-map" />
 
                 <div className="calendario-botao-direito" style={{ left: "50%" }}>
-                    <button
-                        onClick={() => setShowRightCalendar((v) => !v)}
-                        title="Abrir calendário direito"
-                    >
-                        🗓️
-                    </button>
-                    <span>{labelRight}</span>
+                    <div className="calendario-botao">
+                        <button
+                            onClick={() => setShowRightCalendar((v) => !v)}
+                            title="Abrir calendário direito"
+                        >
+                            🗓️
+                        </button>
+                        <span>{labelRight}</span>
+                    </div>
                 </div>
 
                 {showRightCalendar && (
@@ -432,7 +436,7 @@ export default function DualTileMapsViewer({
                         style={{
                             position: "absolute",
                             bottom: 95,
-                            left: "50%",
+                            left: "47.5%",
                             transform: "translateX(-50%)",
                             background: "var(--panel, #fff)",
                             borderRadius: 12,

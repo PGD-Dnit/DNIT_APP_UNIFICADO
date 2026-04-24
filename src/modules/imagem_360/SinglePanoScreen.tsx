@@ -1,0 +1,142 @@
+// src/modules/imagem_360/SinglePanoScreen.tsx
+// Tela de visualização de UMA imagem 360.
+// Exibe o viewer, calendário de datas disponíveis e botão "Comparar"
+// que navega para /compare na mesma aba.
+import { useEffect, useMemo } from "react";
+
+import { useAppStore } from "../../core/store";
+import { listAttachments, buildAttachmentUrl } from "../../core/apiClient";
+import { MarkedCalendar } from "./MarkedCalendar";
+import MiniMap360View from "./MiniMap360View";
+import SinglePanoViewer from "./SinglePanoViewer";
+import PanoToggleBtn from "./PanoToggleBtn";
+
+import "./SinglePanoScreen.css";
+
+type Att = { id: number; name?: string; contentType?: string; size?: number };
+
+function pickBest(atts: Att[]) {
+  const imgs = atts.filter((a) => (a.contentType || "").startsWith("image/"));
+  const base = imgs.length ? imgs : atts;
+  if (!base.length) return null;
+  return base.slice().sort((a, b) => (b.size || 0) - (a.size || 0))[0];
+}
+
+function normalizeDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function sameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+export default function SinglePanoScreen() {
+  const candidateExposures = useAppStore((s) => s.candidateExposures);
+  const leftExp = useAppStore((s) => s.selectedExposureLeft);
+  const setLeftExp = useAppStore((s) => s.setSelectedExposureLeft);
+
+  const panoLeft = useAppStore((s) => s.panoLeft);
+  const setPanoLeft = useAppStore((s) => s.setPanoLeft);
+
+  // Carrega o attachment quando a exposição esquerda muda
+  useEffect(() => {
+    (async () => {
+      if (!leftExp) {
+        setPanoLeft(null);
+        return;
+      }
+      try {
+        const list = await listAttachments(leftExp.layerUrl, leftExp.objectId);
+        const best = pickBest(list);
+        if (!best) { setPanoLeft(null); return; }
+
+        const url = buildAttachmentUrl(leftExp.layerUrl, leftExp.objectId, best.id);
+        setPanoLeft({
+          objectId: leftExp.objectId,
+          attachmentId: best.id,
+          url,
+          name: best.name ?? undefined,
+          contentType: best.contentType ?? undefined,
+          cameraHeading: leftExp.attrs?.cameraheading ?? leftExp.attrs?.cameraHeading ?? undefined,
+          cameraPitch: leftExp.attrs?.camerapitch ?? leftExp.attrs?.cameraPitch ?? undefined,
+          cameraRoll: leftExp.attrs?.cameraroll ?? leftExp.attrs?.cameraRoll ?? undefined,
+          vfov: leftExp.attrs?.verticalfieldofview ?? leftExp.attrs?.vfov ?? undefined,
+        });
+      } catch {
+        setPanoLeft(null);
+      }
+    })();
+  }, [leftExp?.layerUrl, leftExp?.objectId, leftExp, setPanoLeft]);
+
+  // Datas marcadas no calendário (uma por candidato)
+  const markedDates = useMemo(() => {
+    return candidateExposures
+      .map((c) => c.attrs?.acquisitiondate)
+      .filter((v) => typeof v === "number" && Number.isFinite(v))
+      .map((ms) => normalizeDay(new Date(ms)));
+  }, [candidateExposures]);
+
+  // Data selecionada atual
+  const selectedDate = useMemo(() => {
+    const ms = leftExp?.attrs?.acquisitiondate;
+    if (typeof ms !== "number" || !Number.isFinite(ms)) return null;
+    return normalizeDay(new Date(ms));
+  }, [leftExp]);
+
+  // Troca de imagem ao clicar no calendário
+  const onPickDate = (d: Date) => {
+    const dd = normalizeDay(d);
+    const found = candidateExposures.find((c) => {
+      const ms = c.attrs?.acquisitiondate;
+      if (typeof ms !== "number" || !Number.isFinite(ms)) return false;
+      return sameDay(normalizeDay(new Date(ms)), dd);
+    });
+    if (found) setLeftExp(found);
+  };
+
+
+  return (
+    <div className="sps">
+      {/* Viewer 360 ocupa todo o fundo */}
+      <div className="sps__viewer">
+        {panoLeft?.url ? (
+          <SinglePanoViewer
+            url={panoLeft.url}
+            heading={panoLeft.cameraHeading ?? null}
+            pitch={panoLeft.cameraPitch ?? null}
+            vfov={panoLeft.vfov ?? null}
+          />
+        ) : (
+          <div className="sps__empty">
+            <i className="fa-solid fa-circle-notch fa-spin sps__empty__icon" />
+            <span>Carregando imagem 360…</span>
+          </div>
+        )}
+      </div>
+
+      {/* Calendário — canto superior esquerdo */}
+      {markedDates.length > 0 && (
+        <div className="sps__calendar">
+          <div className="sps__calendarLabel">Datas disponíveis</div>
+          <MarkedCalendar
+            markedDates={markedDates}
+            onPick={onPickDate}
+            selectedDate={selectedDate}
+          />
+        </div>
+      )}
+
+      {/* Mini mapa — canto inferior esquerdo */}
+      <div className="sps__minimap">
+        <MiniMap360View defaultZoom={18} />
+      </div>
+
+      {/* Botão Comparar/Voltar — centro inferior, compartilhado */}
+      <PanoToggleBtn />
+    </div>
+  );
+}
