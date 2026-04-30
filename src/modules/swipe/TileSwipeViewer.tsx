@@ -3,10 +3,9 @@ import Map from "@arcgis/core/Map";
 import MapView from "@arcgis/core/views/MapView";
 import WebTileLayer from "@arcgis/core/layers/WebTileLayer";
 import Swipe from "@arcgis/core/widgets/Swipe";
-//import "@arcgis/core/assets/esri/themes/light/main.css";
-import MosaicCalendar from "./MosaicCalendar";
 import Search from "@arcgis/core/widgets/Search";
 import Compass from "@arcgis/core/widgets/Compass";
+import TemporalLayersPanel from "./TemporalLayersPanel";
 import "./TileSwipeViewer.css";
 import { CONFIG } from "../../core/config";
 
@@ -41,9 +40,9 @@ export default function TileSwipeViewer({
   const leftLayerRef = useRef<WebTileLayer | null>(null);
   const rightLayerRef = useRef<WebTileLayer | null>(null);
 
-  // 🗓️ Estados de exibição dos calendários
-  const [showLeftCalendar, setShowLeftCalendar] = useState(false);
-  const [showRightCalendar, setShowRightCalendar] = useState(false);
+  // 🗓️ Estado de exibição do painel temporal
+  const [showTemporalPanel, setShowTemporalPanel] = useState(false);
+  const [selectedSidePanel, setSelectedSidePanel] = useState<"left" | "right">("left");
 
   // 🌍 URLs ativas das camadas
   const [currentLeft, setCurrentLeft] = useState(leftTileUrl);
@@ -170,48 +169,29 @@ export default function TileSwipeViewer({
     }
   }, [currentRight]);
 
-  /** 📅 Seleção de mosaico esquerdo */
-  const handleSelectLeft = (mosaic: any) => {
+  const handleMosaicApply = (side: "left" | "right", mosaic: any) => {
     if (!mosaic?.id) return;
-    setCurrentLeft(
-      `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaic.id}`
-    );
-
-    // 🔄 Converte de "YYYY-MM" → "MM/YYYY"
+    const url = `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaic.id}`;
+    
     let formatted = mosaic.when || mosaic.label || "Sem data";
     const match = String(formatted).match(/(\d{4})[-_/\.](\d{2})/);
     if (match) formatted = `${match[2]}/${match[1]}`;
 
-    setLabelLeft(formatted);
-
-    // 📌 Atualiza o estado de seleção persistente
-    if (mosaic.year && mosaic.month) {
-      setSelectedLeft({ year: mosaic.year, month: mosaic.month });
+    if (side === "left") {
+      setCurrentLeft(url);
+      setLabelLeft(formatted);
+      if (mosaic.year && mosaic.month) {
+        setSelectedLeft({ year: mosaic.year, month: mosaic.month });
+      }
+    } else {
+      setCurrentRight(url);
+      setLabelRight(formatted);
+      if (mosaic.year && mosaic.month) {
+        setSelectedRight({ year: mosaic.year, month: mosaic.month });
+      }
     }
 
-    onMosaicChange?.("left", mosaic.id);
-    setShowLeftCalendar(false);
-  };
-
-  /** 📅 Seleção de mosaico direito */
-  const handleSelectRight = (mosaic: any) => {
-    if (!mosaic?.id) return;
-    setCurrentRight(
-      `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaic.id}`
-    );
-
-    let formatted = mosaic.when || mosaic.label || "Sem data";
-    const match = String(formatted).match(/(\d{4})[-_/\.](\d{2})/);
-    if (match) formatted = `${match[2]}/${match[1]}`;
-
-    setLabelRight(formatted);
-
-    if (mosaic.year && mosaic.month) {
-      setSelectedRight({ year: mosaic.year, month: mosaic.month });
-    }
-
-    onMosaicChange?.("right", mosaic.id);
-    setShowRightCalendar(false);
+    onMosaicChange?.(side, mosaic.id);
   };
 
   /* --------------------------------------------
@@ -222,111 +202,55 @@ export default function TileSwipeViewer({
       {/* 🗺️ Mapa */}
       <div ref={mapDiv} style={{ width: "100%", height: "100%" }} />
 
-      {/* 📍 Label esquerdo */}
+      {/* 📍 Label esquerdo (Badge) */}
       <div className="calendario-botao-esquerdo">
         <div className="calendario-botao">
-          <button
-            onClick={() => {
-              setShowLeftCalendar(!showLeftCalendar);
-              setShowRightCalendar(false);
-            }}
-            title="Abrir calendário esquerdo"
-          >
-            🗓️
-          </button>
           <span>{labelLeft}</span>
         </div>
       </div>
 
-      {/* 📍 Label direito */}
+      {/* 📍 Label direito (Badge) */}
       <div className="calendario-botao-direito">
         <div className="calendario-botao">
-          <button
-            onClick={() => {
-              setShowRightCalendar(!showRightCalendar);
-              setShowLeftCalendar(false);
-            }}
-            title="Abrir calendário direito"
-          >
-            🗓️
-          </button>
           <span>{labelRight}</span>
         </div>
       </div>
 
-      {/* 📅 Calendário esquerdo */}
-      {showLeftCalendar && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 95,
-            left: "19%",
-            background: "var(--panel, #fff)",
-            borderRadius: 12,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
-            zIndex: 3000,
-            width: "180px",
-            minWidth: "180px",
-          }}
-        >
-          <MosaicCalendar
-            mosaics={mosaics}
-            title="Calendário Mosaicos/Camadas"
-            align="left"
-            selected={selectedLeft}
-            onChangeSelected={setSelectedLeft}
-            onSelect={handleSelectLeft}
-            droneDates={droneDates}
-            onSelectDroneDate={(dayKey) => {
-              onDroneDateClick?.("left", dayKey);
-
-              const partes = dayKey.split("-");
-              if (partes.length === 3) {
-                setLabelLeft(`${partes[2]}/${partes[1]}/${partes[0]}`);
-              }
-
-              setShowLeftCalendar(false);
+      {/* Botão para abrir o painel unificado (canto inferior esquerdo, perto do label) */}
+      <div style={{ position: "absolute", bottom: 95, left: "2%", zIndex: 3000 }}>
+        {!showTemporalPanel && (
+          <button
+            onClick={() => setShowTemporalPanel(true)}
+            style={{
+              padding: "8px 16px",
+              background: "#fff",
+              border: "1px solid #ccc",
+              borderRadius: "8px",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+              cursor: "pointer",
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
             }}
-          />
-        </div>
-      )}
+          >
+            🗓️ Tempo e Camadas
+          </button>
+        )}
 
-      {/* 📅 Calendário direito */}
-      {showRightCalendar && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 95,
-            left: "69%",
-            background: "var(--panel, #fff)",
-            borderRadius: 12,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
-            zIndex: 3000,
-            width: "180px",
-            minWidth: "180px",
-          }}
-        >
-          <MosaicCalendar
+        {showTemporalPanel && (
+          <TemporalLayersPanel
             mosaics={mosaics}
-            title="Calendário Mosaicos/Camadas"
-            align="right"
-            selected={selectedRight}
-            onChangeSelected={setSelectedRight}
-            onSelect={handleSelectRight}
             droneDates={droneDates}
-            onSelectDroneDate={(dayKey) => {
-              onDroneDateClick?.("right", dayKey);
-
-              const partes = dayKey.split("-");
-              if (partes.length === 3) {
-                setLabelRight(`${partes[2]}/${partes[1]}/${partes[0]}`);
-              }
-
-              setShowRightCalendar(false);
-            }}
+            image360Dates={new Set()} // Will be populated later if needed in Swipe screen
+            selectedSide={selectedSidePanel}
+            onSideChange={setSelectedSidePanel}
+            onMosaicApply={handleMosaicApply}
+            onDroneApply={onDroneDateClick}
+            onClose={() => setShowTemporalPanel(false)}
           />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

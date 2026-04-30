@@ -1,0 +1,288 @@
+/* src/modules/swipe/TemporalLayersPanel.css */
+
+.temporal-panel-container {
+  background: var(--panel, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  width: 320px;
+  min-width: 320px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: 'Inter', sans-serif;
+  color: #333;
+}
+
+.temporal-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.temporal-panel-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.temporal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #888;
+  padding: 0;
+  line-height: 1;
+}
+
+.temporal-close-btn:hover {
+  color: #333;
+}
+
+/* Tabs */
+.temporal-tabs {
+  display: flex;
+  gap: 4px;
+  background: #f1f3f5;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.temporal-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #555;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.temporal-tab-btn:hover {
+  background: #e9ecef;
+}
+
+.temporal-tab-btn.active {
+  background: #fff;
+  color: #2c3e50;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-weight: 600;
+}
+
+/* Content Area */
+.temporal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Swipe Selection (Mosaics) */
+.temporal-swipe-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.temporal-swipe-selection label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #666;
+}
+
+.temporal-swipe-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.temporal-side-btn {
+  flex: 1;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.temporal-side-btn:hover {
+  border-color: #016a40;
+}
+
+.temporal-side-btn.active {
+  background: #e6f3ec;
+  border-color: #016a40;
+  color: #016a40;
+  font-weight: 600;
+}
+
+/* Date Filters (Drone / 360) */
+.temporal-filter-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.temporal-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.temporal-filter-row label {
+  font-size: 0.8rem;
+  color: #555;
+  width: 40px;
+}
+
+.temporal-filter-input {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.temporal-filter-input:focus {
+  border-color: #016a40;
+}
+
+/* Calendar Overrides */
+.temporal-calendar-wrapper {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.react-calendar {
+  width: 100% !important;
+  border: none !important;
+  font-family: inherit !important;
+}
+
+.react-calendar__navigation button {
+  min-width: 30px !important;
+  background: none;
+}
+
+.react-calendar__tile {
+  padding: 0.5em 0.2em !important;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: 40px;
+}
+
+/* Indicators */
+.temporal-indicators {
+  display: flex;
+  gap: 3px;
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.temp-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+.temp-dot.mosaic { background-color: #3498db; }
+.temp-dot.drone { background-color: #e74c3c; }
+.temp-dot.image360 { background-color: #2ecc71; }
+
+.react-calendar__tile--active {
+  background: #016a40 !important;
+  color: white !important;
+  border-radius: 6px;
+}
+
+.react-calendar__tile--now {
+  background: #f0f0f0 !important;
+  border-radius: 6px;
+}
+
+/* Footer / Actions */
+.temporal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.temporal-status {
+  font-size: 0.75rem;
+  color: #7f8c8d;
+}
+
+.temporal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.temporal-btn-limpar {
+  background: transparent;
+  border: 1px solid #ddd;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #666;
+  cursor: pointer;
+}
+
+.temporal-btn-limpar:hover {
+  background: #f8f9fa;
+}
+
+.temporal-btn-aplicar {
+  background: #016a40;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.temporal-btn-aplicar:hover {
+  background: #015231;
+}
+
+/* Legend */
+.temporal-legend {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.temporal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.temporal-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}

@@ -634,9 +634,24 @@ const SwipePage: React.FC = () => {
         };
     }, []);
 
+    const droneDateFilter = useAppStore((s) => s.droneDateFilter);
+
+    const filteredMapImageLayers = useMemo(() => {
+        if (!droneDateFilter.start && !droneDateFilter.end) {
+            return mapImageLayers;
+        }
+        return mapImageLayers.filter(layer => {
+            if (!layer.sourceDateMs) return false; // Hide items with unknown dates if a filter is active
+            const d = layer.sourceDateMs;
+            if (droneDateFilter.start && d < droneDateFilter.start) return false;
+            if (droneDateFilter.end && d > droneDateFilter.end) return false;
+            return true;
+        });
+    }, [mapImageLayers, droneDateFilter]);
+
     const droneGroups = useMemo(() => {
-        return groupDroneImages(mapImageLayers);
-    }, [mapImageLayers]);
+        return groupDroneImages(filteredMapImageLayers);
+    }, [filteredMapImageLayers]);
 
     const droneGroupsMap = useMemo(() => {
         return new Map(droneGroups.map((g) => [g.groupKey, g]));

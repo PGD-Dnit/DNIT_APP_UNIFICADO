@@ -72,6 +72,7 @@ export function Setup360OnView(view: MapView) {
     let disposed = false;
     let initDone = false;
     let initPromise: Promise<void> | null = null;
+    let unsubscribeStore: (() => void) | null = null;
 
     async function ensureLayersLoaded() {
         if (initDone) return;
@@ -119,6 +120,83 @@ export function Setup360OnView(view: MapView) {
             }
 
             initDone = true;
+
+            // Fetch dates for calendar
+            const fetchDates = async () => {
+                if (disposed) return;
+                const datesSet = new Set<string>();
+                await Promise.all(oiLayers.map(async (lyr) => {
+                    try {
+                        await lyr.load();
+                        const query = lyr.createQuery();
+                        query.outFields = ["*"];
+                        query.where = "1=1";
+                        query.returnGeometry = false;
+                        const result = await lyr.queryFeatures(query);
+                        result.features.forEach(f => {
+                            const dateVal = f.attributes?.acquisitiondate ?? f.attributes?.acquisitionDate ?? f.attributes?.AcquisitionDate;
+                            const ms = toEpochMs(dateVal);
+                            if (ms) {
+                                const d = new Date(ms);
+                                datesSet.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+                            }
+                        });
+                    } catch (e) {
+                        console.warn("[Setup360] falha ao buscar datas de", lyr.title);
+                    }
+                }));
+                if (!disposed) {
+                    useAppStore.getState().setImage360AvailableDates(datesSet);
+                }
+            };
+            fetchDates();
+
+            const applyFilter = async (filter: { start: number | null, end: number | null }) => {
+                if (disposed) return;
+                
+                // Ensure layers are loaded so we can inspect layer.fields
+                await Promise.all(oiLayers.map(lyr => lyr.load()));
+                if (disposed) return;
+
+                oiLayers.forEach(layer => {
+                    const fieldObj = layer.fields?.find(f => f.name.toLowerCase() === "acquisitiondate");
+                    const fieldName = fieldObj ? fieldObj.name : "acquisitionDate"; // fallback
+
+                    let expr = "1=1";
+                    if (filter.start || filter.end) {
+                        const conditions = [];
+                        
+                        const formatTimestamp = (ms: number) => {
+                            const d = new Date(ms);
+                            const y = d.getUTCFullYear();
+                            const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+                            const day = String(d.getUTCDate()).padStart(2, '0');
+                            const h = String(d.getUTCHours()).padStart(2, '0');
+                            const m = String(d.getUTCMinutes()).padStart(2, '0');
+                            const s = String(d.getUTCSeconds()).padStart(2, '0');
+                            return `TIMESTAMP '${y}-${mo}-${day} ${h}:${m}:${s}'`;
+                        };
+
+                        if (filter.start) conditions.push(`${fieldName} >= ${formatTimestamp(filter.start)}`);
+                        if (filter.end) conditions.push(`${fieldName} <= ${formatTimestamp(filter.end)}`);
+                        expr = conditions.join(" AND ");
+                    }
+                    layer.definitionExpression = expr;
+                });
+            };
+
+            // Apply immediately
+            applyFilter(useAppStore.getState().image360DateFilter);
+
+            // Subscribe to future changes
+            let lastFilter = useAppStore.getState().image360DateFilter;
+            unsubscribeStore = useAppStore.subscribe((state) => {
+                const newFilter = state.image360DateFilter;
+                if (newFilter.start !== lastFilter.start || newFilter.end !== lastFilter.end) {
+                    lastFilter = newFilter;
+                    applyFilter(newFilter);
+                }
+            });
         })();
 
         return initPromise;
@@ -257,6 +335,10 @@ export function Setup360OnView(view: MapView) {
 
     return () => {
         disposed = true;
+        if (unsubscribeStore) {
+            unsubscribeStore();
+            unsubscribeStore = null;
+        }
 
         // remove só as layers criadas por este setup (não remove se já existiam)
         for (const lyr of created) {

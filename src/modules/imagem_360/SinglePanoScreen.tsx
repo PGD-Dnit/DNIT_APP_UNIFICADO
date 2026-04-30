@@ -135,6 +135,29 @@ export default function SinglePanoScreen() {
         <MiniMap360View defaultZoom={18} />
       </div>
 
+      {/* HUD de Orientação Inicial — canto superior direito
+      {panoLeft && (
+        <div className="sps__orientation-info">
+          <h4>Atributos da Imagem</h4>
+          <div className="sps__orientation-row">
+            <span className="sps__orientation-label">Heading:</span>
+            <span className="sps__orientation-value">{panoLeft.cameraHeading?.toFixed(2) ?? "N/A"}°</span>
+          </div>
+          <div className="sps__orientation-row">
+            <span className="sps__orientation-label">Pitch:</span>
+            <span className="sps__orientation-value">{panoLeft.cameraPitch?.toFixed(2) ?? "N/A"}°</span>
+          </div>
+          <div className="sps__orientation-row">
+            <span className="sps__orientation-label">Roll:</span>
+            <span className="sps__orientation-value">{panoLeft.cameraRoll?.toFixed(2) ?? "N/A"}°</span>
+          </div>
+          <div className="sps__orientation-row">
+            <span className="sps__orientation-label">VFOV:</span>
+            <span className="sps__orientation-value">{panoLeft.vfov?.toFixed(2) ?? "N/A"}°</span>
+          </div>
+        </div>
+      )} */}
+
       {/* Botão Comparar/Voltar — centro inferior, compartilhado */}
       <PanoToggleBtn />
     </div>

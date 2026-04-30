@@ -11,6 +11,11 @@ export type LastPoint = {
     wkid?: number;
 };
 
+export type DateRange = {
+    start: number | null;
+    end: number | null;
+};
+
 type ActiveMode = "map" | "swipe" | "image360";
 
 /* =========================
@@ -74,6 +79,16 @@ type State = {
     activeExposureLayerUrl: string | null;
     setActiveExposureLayerUrl: (url: string | null) => void;
 
+    // ✅ Filtros de Data
+    droneDateFilter: DateRange;
+    setDroneDateFilter: (range: DateRange) => void;
+
+    image360DateFilter: DateRange;
+    setImage360DateFilter: (range: DateRange) => void;
+
+    image360AvailableDates: Set<string>;
+    setImage360AvailableDates: (dates: Set<string>) => void;
+
     reset360: () => void;
 
     /* =========================
@@ -127,6 +142,15 @@ export const useAppStore = create<State>((set, get) => ({
 
     activeExposureLayerUrl: null, // ou algum default se quiser
     setActiveExposureLayerUrl: (url) => set({ activeExposureLayerUrl: url }),
+
+    droneDateFilter: { start: null, end: null },
+    setDroneDateFilter: (range) => set({ droneDateFilter: range }),
+
+    image360DateFilter: { start: null, end: null },
+    setImage360DateFilter: (range) => set({ image360DateFilter: range }),
+
+    image360AvailableDates: new Set<string>(),
+    setImage360AvailableDates: (dates) => set({ image360AvailableDates: dates }),
 
     reset360: () =>
         set({
