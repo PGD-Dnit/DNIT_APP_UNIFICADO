@@ -1,9 +1,12 @@
 /* src/modules/swipe/TemporalLayersPanel.css */
 
 .temporal-panel-container {
+  position: absolute;
+  top: 186px;
+  left: 59px;
   background: var(--panel, #ffffff);
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   width: 320px;
   min-width: 320px;
   padding: 12px;
@@ -12,6 +15,12 @@
   gap: 12px;
   font-family: 'Inter', sans-serif;
   color: #333;
+  z-index: 30;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.temporal-panel-container:hover {
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
 .temporal-panel-header {
@@ -72,7 +81,7 @@
 .temporal-tab-btn.active {
   background: #fff;
   color: #2c3e50;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   font-weight: 600;
 }
 
@@ -202,9 +211,17 @@
   border-radius: 50%;
 }
 
-.temp-dot.mosaic { background-color: #3498db; }
-.temp-dot.drone { background-color: #e74c3c; }
-.temp-dot.image360 { background-color: #2ecc71; }
+.temp-dot.mosaic {
+  background-color: #3498db;
+}
+
+.temp-dot.drone {
+  background-color: #e74c3c;
+}
+
+.temp-dot.image360 {
+  background-color: #2ecc71;
+}
 
 .react-calendar__tile--active {
   background: #016a40 !important;

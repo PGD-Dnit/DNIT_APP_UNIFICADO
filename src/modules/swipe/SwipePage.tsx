@@ -1277,10 +1277,19 @@ const SwipePage: React.FC = () => {
 
                         <aside className={`camadas ${showCamadas ? "aberta" : "fechada"}`}>
                             <div className="camadas-header">
-                                <h4>Painel de Camadas</h4>
-                                <span className="camadas-subtitle">
-                                    Controle das layers e grupos de drone
-                                </span>
+                                <div className="camadas-header-text">
+                                    <h4>Painel de Camadas</h4>
+                                    <span className="camadas-subtitle">
+                                        Controle das layers e grupos de drone
+                                    </span>
+                                </div>
+                                <button
+                                    className="temporal-close-btn"
+                                    onClick={() => setShowCamadas(false)}
+                                    title="Fechar painel"
+                                >
+                                    &times;
+                                </button>
                             </div>
 
                             <section className="camadas-section">

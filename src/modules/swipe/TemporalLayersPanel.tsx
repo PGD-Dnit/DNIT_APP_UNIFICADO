@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "./TemporalLayersPanel.css";
@@ -11,11 +11,11 @@ interface Props {
   mosaics?: any[]; // Array of PlanetMosaicUI
   droneDates?: Set<string>;
   image360Dates?: Set<string>;
-  
+
   onClose?: () => void;
   onMosaicApply?: (side: SwipeSide, mosaic: any) => void;
   onDroneApply?: (side: SwipeSide, dayKey: string) => void;
-  
+
   // Handlers for side selection so parent can keep UI updated
   selectedSide?: SwipeSide;
   onSideChange?: (side: SwipeSide) => void;
@@ -32,7 +32,7 @@ export default function TemporalLayersPanel({
   onSideChange
 }: Props) {
   const [activeTab, setActiveTab] = useState<TemporalTab>("mosaics");
-  
+
   // Local state for selected side (if not controlled by parent)
   const [localSide, setLocalSide] = useState<SwipeSide>("left");
   const activeSide = onSideChange ? selectedSide : localSide;
@@ -97,7 +97,7 @@ export default function TemporalLayersPanel({
       const y = date.getFullYear();
       const mo = date.getMonth() + 1;
       const d = date.getDate();
-      
+
       const keyDay = `${y}-${mo}-${d}`;
       const keyZeroPad = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
@@ -134,7 +134,7 @@ export default function TemporalLayersPanel({
       const moStr = String(mo).padStart(2, "0");
       const dStr = String(d).padStart(2, "0");
       const dayKey = `${yStr}-${moStr}-${dStr}`;
-      
+
       setSelectedDroneDate(date);
       setSelectedDroneDayKey(dayKey);
     } else if (activeTab === "image360") {
@@ -187,7 +187,7 @@ export default function TemporalLayersPanel({
   return (
     <div className="temporal-panel-container">
       <div className="temporal-panel-header">
-        <h3>Tempo e Camadas</h3>
+        <h3>Calendário</h3>
         {onClose && (
           <button className="temporal-close-btn" onClick={onClose}>
             &times;
@@ -196,19 +196,19 @@ export default function TemporalLayersPanel({
       </div>
 
       <div className="temporal-tabs">
-        <button 
+        <button
           className={`temporal-tab-btn ${activeTab === "mosaics" ? "active" : ""}`}
           onClick={() => setActiveTab("mosaics")}
         >
           Mosaics
         </button>
-        <button 
+        <button
           className={`temporal-tab-btn ${activeTab === "drone" ? "active" : ""}`}
           onClick={() => setActiveTab("drone")}
         >
           Drone
         </button>
-        <button 
+        <button
           className={`temporal-tab-btn ${activeTab === "image360" ? "active" : ""}`}
           onClick={() => setActiveTab("image360")}
         >
@@ -221,13 +221,13 @@ export default function TemporalLayersPanel({
           <div className="temporal-swipe-selection">
             <label>Aplicar no swipe / mapas:</label>
             <div className="temporal-swipe-buttons">
-              <button 
+              <button
                 className={`temporal-side-btn ${activeSide === "left" ? "active" : ""}`}
                 onClick={() => handleSideClick("left")}
               >
                 Esquerda
               </button>
-              <button 
+              <button
                 className={`temporal-side-btn ${activeSide === "right" ? "active" : ""}`}
                 onClick={() => handleSideClick("right")}
               >

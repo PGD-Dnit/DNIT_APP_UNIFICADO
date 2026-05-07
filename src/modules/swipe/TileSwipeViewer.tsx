@@ -53,8 +53,8 @@ export default function TileSwipeViewer({
   const [labelRight, setLabelRight] = useState(titleRight);
 
   // 📆 Seleção persistente de mês/ano (mantém ativo mesmo ao fechar)
-  const [selectedLeft, setSelectedLeft] = useState<{ year: number; month: number } | null>(null);
-  const [selectedRight, setSelectedRight] = useState<{ year: number; month: number } | null>(null);
+  const [, setSelectedLeft] = useState<{ year: number; month: number } | null>(null);
+  const [, setSelectedRight] = useState<{ year: number; month: number } | null>(null);
 
   /** 🔧 Inicializa mapa e Swipe */
   useEffect(() => {
@@ -172,7 +172,7 @@ export default function TileSwipeViewer({
   const handleMosaicApply = (side: "left" | "right", mosaic: any) => {
     if (!mosaic?.id) return;
     const url = `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaic.id}`;
-    
+
     let formatted = mosaic.when || mosaic.label || "Sem data";
     const match = String(formatted).match(/(\d{4})[-_/\.](\d{2})/);
     if (match) formatted = `${match[2]}/${match[1]}`;
@@ -216,29 +216,42 @@ export default function TileSwipeViewer({
         </div>
       </div>
 
-      {/* Botão para abrir o painel unificado (canto inferior esquerdo, perto do label) */}
-      <div style={{ position: "absolute", bottom: 95, left: "2%", zIndex: 3000 }}>
-        {!showTemporalPanel && (
-          <button
-            onClick={() => setShowTemporalPanel(true)}
-            style={{
-              padding: "8px 16px",
-              background: "#fff",
-              border: "1px solid #ccc",
-              borderRadius: "8px",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-              cursor: "pointer",
-              fontWeight: 500,
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            }}
-          >
-            🗓️ Tempo e Camadas
-          </button>
-        )}
+      {/* Botão para abrir/fechar o painel unificado — sempre visível */}
+      <div style={{ zIndex: 4000 }}>
+        <button
+          title="Calendário com filtro"
+          onClick={() => setShowTemporalPanel(prev => !prev)}
+          style={{
+            position: "absolute",
+            top: "186px",
+            left: "15px",
+            width: "36px",
+            height: "36px",
+            background: "#ffffffff",
+            color: "#000000ff",
+            borderRadius: "10px",
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.18)",
+            cursor: "pointer",
+            fontWeight: 600,
+            fontSize: "14px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontFamily: '"Poppins", sans-serif',
+          }}
+        >
+          {showTemporalPanel ? (
+            <i className="fa-solid fa-xmark"></i>
+          ) : (
+            <i className="fa-solid fa-calendar-days"></i>
+          )}
 
-        {showTemporalPanel && (
+        </button>
+      </div>
+
+      {/* Painel temporal — posicionamento independente do botão */}
+      {showTemporalPanel && (
+        <div>
           <TemporalLayersPanel
             mosaics={mosaics}
             droneDates={droneDates}
@@ -249,8 +262,8 @@ export default function TileSwipeViewer({
             onDroneApply={onDroneDateClick}
             onClose={() => setShowTemporalPanel(false)}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

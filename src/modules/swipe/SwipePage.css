@@ -132,7 +132,7 @@ body {
   position: absolute;
   top: 90px;
   left: 15px;
-  font-size: 1.1rem;
+  font-size: 14px;
   color: #141414;
   background: #ffffff;
   border-radius: 10px;
@@ -183,7 +183,7 @@ body {
    =============================== */
 .camadas {
   position: absolute;
-  top: 86px;
+  top: 90px;
   left: 58px;
   width: 360px;
   max-width: calc(100vw - 90px);
@@ -225,6 +225,29 @@ body {
   margin-bottom: 14px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.camadas-header-text {
+  flex: 1;
+}
+
+.temporal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0;
+  line-height: 1;
+  margin-left: 8px;
+  transition: color 0.2s;
+}
+
+.temporal-close-btn:hover {
+  color: var(--text);
 }
 
 .camadas-header h4 {

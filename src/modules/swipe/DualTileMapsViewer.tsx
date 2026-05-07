@@ -63,13 +63,13 @@ export default function DualTileMapsViewer({
     const [labelLeft, setLabelLeft] = useState(titleLeft);
     const [labelRight, setLabelRight] = useState(titleRight);
 
-    const [selectedLeft, setSelectedLeft] = useState<{
+    const [, setSelectedLeft] = useState<{
         year: number;
         month: number;
         day?: number;
     } | null>(null);
 
-    const [selectedRight, setSelectedRight] = useState<{
+    const [, setSelectedRight] = useState<{
         year: number;
         month: number;
         day?: number;
@@ -381,41 +381,54 @@ export default function DualTileMapsViewer({
                 </div>
             </div>
 
-            {/* Painel Unificado Flutuante */}
-            <div style={{ position: "absolute", bottom: 95, left: "2%", zIndex: 3000 }}>
-                {!showTemporalPanel && (
-                    <button
-                        onClick={() => setShowTemporalPanel(true)}
-                        style={{
-                            padding: "8px 16px",
-                            background: "#fff",
-                            border: "1px solid #ccc",
-                            borderRadius: "8px",
-                            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-                            cursor: "pointer",
-                            fontWeight: 500,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px"
-                        }}
-                    >
-                        🗓️ Tempo e Camadas
-                    </button>
-                )}
+            {/* Botão para abrir/fechar o painel unificado — sempre visível */}
+            <div style={{ zIndex: 4000 }}>
+                <button
+                    title="Calendário com filtro"
+                    onClick={() => setShowTemporalPanel(prev => !prev)}
+                    style={{
+                        position: "absolute",
+                        top: "186px",
+                        left: "15px",
+                        width: "36px",
+                        height: "36px",
+                        background: "#ffffffff",
+                        color: "#000000ff",
+                        borderRadius: "10px",
+                        boxShadow: "0 4px 14px rgba(0, 0, 0, 0.18)",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        fontSize: "14px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        fontFamily: '"Poppins", sans-serif',
+                    }}
+                >
+                    {showTemporalPanel ? (
+                        <i className="fa-solid fa-xmark"></i>
+                    ) : (
+                        <i className="fa-solid fa-calendar-days"></i>
+                    )}
 
-                {showTemporalPanel && (
+                </button>
+            </div>
+
+            {/* Painel temporal — posicionamento independente do botão */}
+            {showTemporalPanel && (
+                <div>
                     <TemporalLayersPanel
                         mosaics={mosaics}
                         droneDates={droneDates}
-                        image360Dates={new Set()} 
+                        image360Dates={new Set()} // Will be populated later if needed in Swipe screen
                         selectedSide={selectedSidePanel}
                         onSideChange={setSelectedSidePanel}
                         onMosaicApply={handleMosaicApply}
                         onDroneApply={onDroneDateClick}
                         onClose={() => setShowTemporalPanel(false)}
                     />
-                )}
-            </div>
-        </div>
+                </div>
+            )}
+        </div >
     );
 }
