@@ -166,3 +166,67 @@ export function sortCandidatesDesc(candidates: ExposureRef[]): ExposureRef[] {
         return db - da;
     });
 }
+
+/**
+ * Faz queryFeatures espacial em todas as layers fornecidas usando um ponto.
+ * Retorna TODOS os features que intersectam o ponto — sem a limitação do hitTest
+ * que só retorna features renderizados na viewport.
+ *
+ * @param layers       Camadas a consultar
+ * @param point        Ponto Esri (MapPoint do clique)
+ * @param extraAttrs   Atributos extras por layer (ex: { __layerTitle, __layerId })
+ */
+export async function queryExposuresAtPoint(
+    layers: FeatureLayer[],
+    point: __esri.Point,
+    extraAttrs?: (lyr: FeatureLayer) => Record<string, any>
+): Promise<globalThis.Map<string, ExposureRef>> {
+    const uniq = new globalThis.Map<string, ExposureRef>();
+
+    await Promise.all(
+        layers.map(async (layer) => {
+            try {
+                const query = layer.createQuery();
+                query.geometry = point;
+                query.spatialRelationship = "intersects";
+                query.outFields = ["*"];
+                query.returnGeometry = false;
+
+                const result = await layer.queryFeatures(query);
+
+                for (const feature of result.features) {
+                    const oidField = layer.objectIdField;
+                    const objectId = safeNum(feature.attributes?.[oidField]);
+                    if (objectId == null) continue;
+
+                    const acqRaw =
+                        feature.attributes?.acquisitiondate ??
+                        feature.attributes?.acquisitionDate ??
+                        feature.attributes?.AcquisitionDate ??
+                        null;
+
+                    const acqMs = toEpochMs(acqRaw);
+                    const layerUrl0 = ensureLayer0(layer.url);
+
+                    const ref: ExposureRef = {
+                        objectId,
+                        layerUrl: layerUrl0,
+                        title: feature.attributes?.name ?? layer.title ?? "Imagem da Obra",
+                        attrs: {
+                            ...feature.attributes,
+                            acquisitiondate: acqMs ?? null,
+                            ...(extraAttrs ? extraAttrs(layer) : {}),
+                        },
+                        acquisitionDate: acqMs ?? undefined,
+                    };
+
+                    uniq.set(`${layerUrl0}::${objectId}`, ref);
+                }
+            } catch (e) {
+                console.warn("[queryExposuresAtPoint] falhou para layer:", layer.title, e);
+            }
+        })
+    );
+
+    return uniq;
+}

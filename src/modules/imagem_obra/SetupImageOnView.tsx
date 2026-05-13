@@ -9,7 +9,7 @@ import {
     ensureLayer0,
     fetchPointLayers,
     extractExposureGraphics,
-    buildExposureMap,
+    queryExposuresAtPoint,
     sortCandidatesDesc,
 } from "./imageObraUtils";
 
@@ -180,12 +180,11 @@ export function SetupImageOnView(view: MapView) {
             await ensureLayersLoaded();
             if (!imgLayers.length) return;
 
-            // ✅ hitTest em TODAS as camadas io (image_obra) carregadas
+            // ── Passo 1: hitTest para confirmar presença de feature no ponto ──
             const hit = await view.hitTest(ev, { include: imgLayers });
+            const hitGraphics = extractExposureGraphics(hit.results, "io:");
 
-            const graphics = extractExposureGraphics(hit.results, "io:");
-
-            if (!graphics.length) {
+            if (!hitGraphics.length) {
                 setCandidateImages([]);
                 setSelectedImageLeft(null);
                 setSelectedImageRight(null);
@@ -195,9 +194,49 @@ export function SetupImageOnView(view: MapView) {
                 return;
             }
 
-            // ✅ junta tudo (inclusive sobrepostos), dedupe por (layerUrl+oid)
-            const uniq = buildExposureMap(graphics);
+            // ── Passo 2: queryFeatures espacial nas layers com hit ──
+            // hitTest só retorna features RENDERIZADOS na viewport (limitado).
+            // queryFeatures retorna TODOS os features no ponto, independente de render.
+            const hitLayerIds = new Set(hitGraphics.map((g) => (g.layer as any).id as string));
+            const hitLayers = imgLayers.filter((l) => hitLayerIds.has(l.id));
+
+            const uniq = await queryExposuresAtPoint(hitLayers, ev.mapPoint);
+
+            // Fallback: se queryFeatures falhou (ex: serviço sem suporte a query)
+            // usa os resultados do hitTest para garantir ao menos algum candidato
+            if (uniq.size === 0) {
+                console.warn("[SetupImage] queryFeatures retornou vazio — usando fallback do hitTest");
+                const fallback = hitGraphics;
+                for (const g of fallback) {
+                    const lyr = g.layer as import("@arcgis/core/layers/FeatureLayer").default;
+                    const oidField = lyr.objectIdField;
+                    const objectId = safeNum(g.attributes?.[oidField]);
+                    if (objectId == null) continue;
+                    const acqRaw = g.attributes?.acquisitiondate ?? g.attributes?.acquisitionDate ?? g.attributes?.AcquisitionDate ?? null;
+                    const acqMs = toEpochMs(acqRaw);
+                    const layerUrl0 = ensureLayer0(lyr.url);
+                    uniq.set(`${layerUrl0}::${objectId}`, {
+                        objectId, layerUrl: layerUrl0,
+                        title: g.attributes?.name ?? lyr.title ?? "Imagem da Obra",
+                        attrs: { ...g.attributes, acquisitiondate: acqMs ?? null },
+                        acquisitionDate: acqMs ?? undefined,
+                    });
+                }
+            }
+
             const candidates = sortCandidatesDesc(Array.from(uniq.values()));
+
+            console.log(
+                `[SetupImage] candidates (${candidates.length}):`,
+                candidates.map((c) => ({
+                    objectId: c.objectId,
+                    layerUrl: c.layerUrl,
+                    title: c.title,
+                    acquisitionDate: c.acquisitionDate
+                        ? new Date(c.acquisitionDate).toISOString()
+                        : null,
+                }))
+            );
 
             setCandidateImages(candidates);
 

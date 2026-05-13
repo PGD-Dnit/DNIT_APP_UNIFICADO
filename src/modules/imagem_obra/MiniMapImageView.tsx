@@ -15,9 +15,10 @@ import {
     ensureLayer0,
     fetchPointLayers,
     extractExposureGraphics,
-    buildExposureMap,
+    queryExposuresAtPoint,
     sortCandidatesDesc,
     safeNum,
+    toEpochMs,
 } from "./imageObraUtils";
 import "./MiniMapImageView.css";
 
@@ -148,10 +149,36 @@ export default function MiniMapImageView({ defaultZoom = 18 }: Props) {
                 return;
             }
 
-            const uniq = buildExposureMap(exposureGraphics, (lyr) => ({
-                __layerTitle: lyr.title ?? null,
-                __layerId: lyr.id ?? null,
-            }));
+            // ── queryFeatures espacial nas layers com hit ──
+            // hitTest só retorna features renderizados; queryFeatures retorna TODOS.
+            const hitLayerIds = new Set(exposureGraphics.map((g) => (g.layer as any).id as string));
+            const hitLayers = includeLayers.filter((l) => hitLayerIds.has(l.id));
+
+            const uniq = await queryExposuresAtPoint(
+                hitLayers,
+                event.mapPoint ?? mp as any,
+                (lyr) => ({ __layerTitle: lyr.title ?? null, __layerId: lyr.id ?? null })
+            );
+
+            // Fallback para hitTest se o serviço não suportar query espacial
+            if (uniq.size === 0) {
+                for (const g of exposureGraphics) {
+                    const lyr = g.layer as FeatureLayer;
+                    const oidField = lyr.objectIdField;
+                    const objectId = safeNum(g.attributes?.[oidField]);
+                    if (objectId == null) continue;
+                    const acqRaw = g.attributes?.acquisitiondate ?? g.attributes?.acquisitionDate ?? g.attributes?.AcquisitionDate ?? null;
+                    const acqMs = toEpochMs(acqRaw);
+                    const layerUrl0 = ensureLayer0(lyr.url);
+                    uniq.set(`${layerUrl0}::${objectId}`, {
+                        objectId, layerUrl: layerUrl0,
+                        title: g.attributes?.name ?? lyr.title ?? "Imagem da Obra",
+                        attrs: { ...g.attributes, acquisitiondate: acqMs ?? null,
+                            __layerTitle: lyr.title ?? null, __layerId: lyr.id ?? null },
+                        acquisitionDate: acqMs ?? undefined,
+                    });
+                }
+            }
             const candidates = sortCandidatesDesc(Array.from(uniq.values()));
 
             setCandidateImages(candidates);
