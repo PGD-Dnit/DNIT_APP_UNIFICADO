@@ -16,7 +16,7 @@ export type DateRange = {
     end: number | null;
 };
 
-type ActiveMode = "map" | "swipe" | "image360";
+type ActiveMode = "map" | "swipe" | "image360" | "imageObra";
 
 /* =========================
    ✅ Planet (front model)
@@ -91,6 +91,36 @@ type State = {
 
     reset360: () => void;
 
+    // ✅ Imagem Obra
+    candidateImages: ExposureRef[];
+    setCandidateImages: (arr: ExposureRef[]) => void;
+
+    selectedImageLeft: ExposureRef | null;
+    setSelectedImageLeft: (e: ExposureRef | null) => void;
+
+    selectedImageRight: ExposureRef | null;
+    setSelectedImageRight: (e: ExposureRef | null) => void;
+
+    imageLeft: PanoSelection | null;
+    setImageLeft: (p: PanoSelection | null) => void;
+
+    imageRight: PanoSelection | null;
+    setImageRight: (p: PanoSelection | null) => void;
+
+    compareImageOpen: boolean;
+    setCompareImageOpen: (v: boolean) => void;
+
+    imageObraDateFilter: DateRange;
+    setImageObraDateFilter: (range: DateRange) => void;
+
+    imageObraAvailableDates: Set<string>;
+    setImageObraAvailableDates: (dates: Set<string>) => void;
+
+    resetImageObra: () => void;
+
+    imageObraMapMsg: string | null;
+    setImageObraMapMsg: (msg: string | null) => void;
+
     /* =========================
        ✅ Planet mosaics (shared)
        ========================= */
@@ -162,6 +192,44 @@ export const useAppStore = create<State>((set, get) => ({
             lastClickedPoint: null,
             compareOpen: false,
         }),
+
+    candidateImages: [],
+    setCandidateImages: (arr) => set({ candidateImages: arr }),
+
+    selectedImageLeft: null,
+    setSelectedImageLeft: (e) => set({ selectedImageLeft: e }),
+
+    selectedImageRight: null,
+    setSelectedImageRight: (e) => set({ selectedImageRight: e }),
+
+    imageLeft: null,
+    setImageLeft: (p) => set({ imageLeft: p }),
+
+    imageRight: null,
+    setImageRight: (p) => set({ imageRight: p }),
+
+    compareImageOpen: false,
+    setCompareImageOpen: (v) => set({ compareImageOpen: v }),
+
+    imageObraDateFilter: { start: null, end: null },
+    setImageObraDateFilter: (range) => set({ imageObraDateFilter: range }),
+
+    imageObraAvailableDates: new Set<string>(),
+    setImageObraAvailableDates: (dates) => set({ imageObraAvailableDates: dates }),
+
+    resetImageObra: () =>
+        set({
+            candidateImages: [],
+            selectedImageLeft: null,
+            selectedImageRight: null,
+            imageLeft: null,
+            imageRight: null,
+            lastClickedPoint: null,
+            compareImageOpen: false,
+        }),
+
+    imageObraMapMsg: null,
+    setImageObraMapMsg: (msg) => set({ imageObraMapMsg: msg }),
 
     /* =========================
        ✅ Planet mosaics

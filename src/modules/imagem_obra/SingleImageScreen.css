@@ -1,0 +1,81 @@
+/* src/modules/imagem_obra/SingleImageScreen.css */
+
+.sis {
+    height: 100vh;
+    width: 100%;
+    background: #0b0f14;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Área do viewer ocupa tudo */
+.sis__viewer {
+    position: absolute;
+    inset: 0;
+}
+
+
+/* Calendário — canto superior esquerdo */
+.sis__calendar {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 50;
+    pointer-events: auto;
+}
+
+.sis__calendarLabel {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.7;
+    margin-bottom: 4px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+/* Mini mapa — canto inferior esquerdo */
+.sis__minimap {
+    position: absolute;
+    left: 14px;
+    bottom: 60px;
+    z-index: 50;
+    pointer-events: auto;
+}
+
+/* Mensagem quando não há imagem */
+.sis__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Card cinza claro com bordas arredondadas */
+.sis__empty__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.91);
+    border: 1px solid rgba(220, 225, 230, 0.18);
+    border-radius: 16px;
+    padding: 32px 48px;
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 14px;
+    backdrop-filter: blur(4px);
+    max-width: 360px;
+    text-align: center;
+}
+
+.sis__empty__icon {
+    font-size: 36px;
+    opacity: 0.3;
+}
+
+.sis__empty__sub {
+    font-size: 12px;
+    opacity: 0.5;
+    margin-top: 2px;
+}

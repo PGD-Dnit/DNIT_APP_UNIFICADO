@@ -1,13 +1,12 @@
-// src/modules/imagem_360/PanoToggleBtn.tsx
-// Botão único que alterna entre a tela de 1 imagem (/view360) e 2 imagens (/compare).
+// src/modules/imagem_obra/ImageToggleBtn.tsx
 import { useNavigate, useLocation } from "react-router-dom";
-import "./PanoToggleBtn.css";
+import "./ImageToggleBtn.css";
 
-export default function PanoToggleBtn() {
+export default function ImageToggleBtn() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  const isCompare = pathname.startsWith("/compare");
+  const isCompare = pathname.startsWith("/compare-image");
 
   const handleClick = () => {
     // preserva ?mid para que o sessionStorage funcione após F5
@@ -15,27 +14,27 @@ export default function PanoToggleBtn() {
     const midParam = mid ? `?mid=${encodeURIComponent(mid)}` : "";
 
     if (isCompare) {
-      navigate(`/view360${midParam}`);
+      navigate(`/view-image${midParam}`);
     } else {
-      navigate(`/compare${midParam}`);
+      navigate(`/compare-image${midParam}`);
     }
   };
 
   return (
     <button
       type="button"
-      className="pano-toggle-btn"
+      className="image-toggle-btn"
       onClick={handleClick}
       title={isCompare ? "Voltar para imagem única" : "Ver comparação lado a lado"}
     >
       {isCompare ? (
         <>
-          <i className="fa-solid fa-image pano-toggle-btn__icon" />
+          <i className="fa-solid fa-image image-toggle-btn__icon" />
           <span>Voltar</span>
         </>
       ) : (
         <>
-          <i className="fa-solid fa-code-compare pano-toggle-btn__icon" />
+          <i className="fa-solid fa-code-compare image-toggle-btn__icon" />
           <span>Comparar</span>
         </>
       )}

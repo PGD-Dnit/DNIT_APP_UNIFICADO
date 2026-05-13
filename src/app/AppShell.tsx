@@ -8,7 +8,7 @@ import MapBase from "../modules/map/MapBase";
 
 // ajuste estes imports para os seus componentes reais:
 import SwipePage from "../modules/swipe/SwipePage";
-import AppInit from "../modules/imagem_360/AppInit"; // ou Image360Panel
+import AppInit from "../core/AppInit";
 
 import ErrorBoundary from "../core/ErrorBoundary";
 
@@ -19,6 +19,7 @@ export default function AppShell() {
   //const inMap = activeMode === "map";
   const inSwipe = activeMode === "swipe";
   const in360 = activeMode === "image360";
+  const inImageObra = activeMode === "imageObra";
 
   return (
     <div style={styles.shell}>
@@ -63,8 +64,8 @@ export default function AppShell() {
           </div>
         )}
 
-        {/* ✅ Overlay 360 */}
-        {in360 && (
+        {/* ✅ Overlay 360 / Imagem Obra */}
+        {(in360 || inImageObra) && (
           <div
             style={{
               ...styles.overlay,

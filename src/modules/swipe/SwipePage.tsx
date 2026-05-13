@@ -12,6 +12,7 @@ import "./SwipePage.css";
 import { useAppStore } from "../../core/store";
 import { CONFIG } from "../../core/config";
 import { Setup360OnView } from "../imagem_360/Setup360OnView";
+import { SetupImageOnView } from "../imagem_obra/SetupImageOnView";
 
 type LayerItem = {
     id: string;
@@ -750,7 +751,12 @@ const SwipePage: React.FC = () => {
         view.when()
             .then(() => {
                 if (tokenRef.current !== token) return;
-                cleanupRef.current = Setup360OnView(view);
+                const cleanup360 = Setup360OnView(view);
+                const cleanupObra = SetupImageOnView(view);
+                cleanupRef.current = () => {
+                    cleanup360();
+                    cleanupObra();
+                };
             })
             .catch((err) => {
                 console.error(`view.when() falhou no SwipePage (${label}):`, err);

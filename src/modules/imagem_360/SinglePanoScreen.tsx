@@ -6,7 +6,7 @@ import { useEffect, useMemo } from "react";
 
 import { useAppStore } from "../../core/store";
 import { listAttachments, buildAttachmentUrl } from "../../core/apiClient";
-import { MarkedCalendar } from "./MarkedCalendar";
+import { MarkedCalendar } from "../../components/MarkedCalendar";
 import MiniMap360View from "./MiniMap360View";
 import SinglePanoViewer from "./SinglePanoViewer";
 import PanoToggleBtn from "./PanoToggleBtn";

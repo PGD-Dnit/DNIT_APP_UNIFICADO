@@ -1,21 +1,19 @@
-// src/modules/imagem_360/SinglePanoPage.tsx
-// Wrapper da rota /view360.
-// Recebe o postMessage de Setup360OnView, hidrata o store e renderiza SinglePanoScreen.
+// src/modules/imagem_obra/SingleImagePage.tsx
 import { useEffect } from "react";
 import { useAppStore } from "../../core/store";
-import SinglePanoScreen from "./SinglePanoScreen";
+import SingleImageScreen from "./SingleImageScreen";
 
-const SESSION_KEY_PREFIX = "dnit_360_payload:";
+const SESSION_KEY_PREFIX = "dnit_img_payload:";
 
 function hydrateStore(data: any) {
     const store = useAppStore.getState();
     if (data.lastClickedPoint) store.setLastClickedPoint(data.lastClickedPoint);
-    if (Array.isArray(data.candidates)) store.setCandidateExposures(data.candidates);
-    if (data.left) store.setSelectedExposureLeft(data.left);
-    if (data.right) store.setSelectedExposureRight(data.right);
+    if (Array.isArray(data.candidates)) store.setCandidateImages(data.candidates);
+    if (data.left) store.setSelectedImageLeft(data.left);
+    if (data.right) store.setSelectedImageRight(data.right);
 }
 
-export default function SinglePanoPage() {
+export default function SingleImagePage() {
     const targetOrigin = window.location.origin;
 
     useEffect(() => {
@@ -37,7 +35,7 @@ export default function SinglePanoPage() {
             if (e.origin !== targetOrigin) return;
 
             const data: any = e.data;
-            if (!data || data.__type !== "DNIT_COMPARE_INIT") return;
+            if (!data || data.__type !== "DNIT_IMAGE_COMPARE_INIT") return;
 
             // aceita apenas o msgId correspondente a esta aba (se informado)
             if (mid && data.msgId && data.msgId !== mid) return;
@@ -54,7 +52,7 @@ export default function SinglePanoPage() {
             // ACK para a aba origem parar o retry
             try {
                 window.opener?.postMessage(
-                    { __type: "DNIT_COMPARE_ACK", msgId: data.msgId },
+                    { __type: "DNIT_IMAGE_COMPARE_ACK", msgId: data.msgId },
                     targetOrigin
                 );
             } catch { }
@@ -66,7 +64,7 @@ export default function SinglePanoPage() {
 
     return (
         <div style={{ height: "100vh", width: "100vw", background: "#0b0f14" }}>
-            <SinglePanoScreen />
+            <SingleImageScreen />
         </div>
     );
 }

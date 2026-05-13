@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 
 import { useAppStore } from "../../core/store";
 import DualPanoViewer from "./DualPanoViewer";
-import { MarkedCalendar } from "./MarkedCalendar";
+import { MarkedCalendar } from "../../components/MarkedCalendar";
 import { listAttachments, buildAttachmentUrl } from "../../core/apiClient";
 import MiniMap360View from "./MiniMap360View";
 import PanoToggleBtn from "./PanoToggleBtn";
