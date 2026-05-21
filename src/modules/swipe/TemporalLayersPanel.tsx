@@ -3,8 +3,9 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "./TemporalLayersPanel.css";
 import { useAppStore } from "../../core/store";
+import { FaRegEye, FaRegEyeSlash } from "react-icons/fa";
 
-export type TemporalTab = "mosaics" | "drone" | "image360";
+export type TemporalTab = "mosaics" | "drone" | "image360" | "imageObra";
 export type SwipeSide = "left" | "right";
 
 interface Props {
@@ -44,6 +45,18 @@ export default function TemporalLayersPanel({
   const setImage360DateFilter = useAppStore(s => s.setImage360DateFilter);
   const image360AvailableDates = useAppStore(s => s.image360AvailableDates);
 
+  const imageObraDateFilter = useAppStore(s => s.imageObraDateFilter);
+  const setImageObraDateFilter = useAppStore(s => s.setImageObraDateFilter);
+  const imageObraAvailableDates = useAppStore(s => s.imageObraAvailableDates);
+
+  // Visibilidade global dos grupos de camada
+  const droneLayersVisible = useAppStore(s => s.droneLayersVisible);
+  const setDroneLayersVisible = useAppStore(s => s.setDroneLayersVisible);
+  const image360LayersVisible = useAppStore(s => s.image360LayersVisible);
+  const setImage360LayersVisible = useAppStore(s => s.setImage360LayersVisible);
+  const imageObraLayersVisible = useAppStore(s => s.imageObraLayersVisible);
+  const setImageObraLayersVisible = useAppStore(s => s.setImageObraLayersVisible);
+
   // Parse dates for HTML inputs (YYYY-MM-DD)
   const toDateString = (ts: number | null) => {
     if (!ts) return "";
@@ -56,6 +69,9 @@ export default function TemporalLayersPanel({
 
   const [img360Start, setImg360Start] = useState<string>(toDateString(image360DateFilter.start));
   const [img360End, setImg360End] = useState<string>(toDateString(image360DateFilter.end));
+
+  const [imgObraStart, setImgObraStart] = useState<string>(toDateString(imageObraDateFilter.start));
+  const [imgObraEnd, setImgObraEnd] = useState<string>(toDateString(imageObraDateFilter.end));
 
   const [selectedMosaicDate, setSelectedMosaicDate] = useState<Date | null>(null);
   const [selectedMosaicObj, setSelectedMosaicObj] = useState<any | null>(null);
@@ -104,13 +120,15 @@ export default function TemporalLayersPanel({
       const hasMosaic = availableMosaicsSet.has(keyDay);
       const hasDrone = droneDates.has(keyZeroPad);
       const has360 = image360Dates.has(keyZeroPad) || image360AvailableDates.has(keyZeroPad);
+      const hasObra = imageObraAvailableDates.has(keyZeroPad);
 
-      if (hasMosaic || hasDrone || has360) {
+      if (hasMosaic || hasDrone || has360 || hasObra) {
         return (
           <div className="temporal-indicators">
             {hasMosaic && <div className="temp-dot mosaic" />}
             {hasDrone && <div className="temp-dot drone" />}
             {has360 && <div className="temp-dot image360" />}
+            {hasObra && <div className="temp-dot imageObra" />}
           </div>
         );
       }
@@ -141,6 +159,10 @@ export default function TemporalLayersPanel({
       const str = toDateString(date.getTime());
       setImg360Start(str);
       setImg360End(str);
+    } else if (activeTab === "imageObra") {
+      const str = toDateString(date.getTime());
+      setImgObraStart(str);
+      setImgObraEnd(str);
     }
   };
 
@@ -159,6 +181,10 @@ export default function TemporalLayersPanel({
       const startMs = img360Start ? new Date(img360Start + "T00:00:00").getTime() : null;
       const endMs = img360End ? new Date(img360End + "T23:59:59").getTime() : null;
       setImage360DateFilter({ start: startMs, end: endMs });
+    } else if (activeTab === "imageObra") {
+      const startMs = imgObraStart ? new Date(imgObraStart + "T00:00:00").getTime() : null;
+      const endMs = imgObraEnd ? new Date(imgObraEnd + "T23:59:59").getTime() : null;
+      setImageObraDateFilter({ start: startMs, end: endMs });
     }
   };
 
@@ -176,6 +202,10 @@ export default function TemporalLayersPanel({
       setImg360Start("");
       setImg360End("");
       setImage360DateFilter({ start: null, end: null });
+    } else if (activeTab === "imageObra") {
+      setImgObraStart("");
+      setImgObraEnd("");
+      setImageObraDateFilter({ start: null, end: null });
     }
   };
 
@@ -202,18 +232,63 @@ export default function TemporalLayersPanel({
         >
           Mosaics
         </button>
-        <button
-          className={`temporal-tab-btn ${activeTab === "drone" ? "active" : ""}`}
-          onClick={() => setActiveTab("drone")}
-        >
-          Drone
-        </button>
-        <button
-          className={`temporal-tab-btn ${activeTab === "image360" ? "active" : ""}`}
-          onClick={() => setActiveTab("image360")}
-        >
-          Imagem 360
-        </button>
+
+        {/* ── Drone ── */}
+        <div className="temporal-tab-with-eye">
+          <button
+            className={`temporal-tab-btn ${activeTab === "drone" ? "active" : ""}`}
+            onClick={() => setActiveTab("drone")}
+          >
+            Drone
+          </button>
+          <button
+            className="temporal-visibility-btn"
+            title={droneLayersVisible ? "Ocultar camadas Drone" : "Mostrar camadas Drone"}
+            onClick={(e) => { e.stopPropagation(); setDroneLayersVisible(!droneLayersVisible); }}
+          >
+            {droneLayersVisible
+              ? <FaRegEye size={13} color="#444" />
+              : <FaRegEyeSlash size={13} color="#aaa" />}
+          </button>
+        </div>
+
+        {/* ── Imagem 360 ── */}
+        <div className="temporal-tab-with-eye">
+          <button
+            className={`temporal-tab-btn ${activeTab === "image360" ? "active" : ""}`}
+            onClick={() => setActiveTab("image360")}
+          >
+            Imagem 360
+          </button>
+          <button
+            className="temporal-visibility-btn"
+            title={image360LayersVisible ? "Ocultar camadas 360" : "Mostrar camadas 360"}
+            onClick={(e) => { e.stopPropagation(); setImage360LayersVisible(!image360LayersVisible); }}
+          >
+            {image360LayersVisible
+              ? <FaRegEye size={13} color="#444" />
+              : <FaRegEyeSlash size={13} color="#aaa" />}
+          </button>
+        </div>
+
+        {/* ── Img. Obra ── */}
+        <div className="temporal-tab-with-eye">
+          <button
+            className={`temporal-tab-btn ${activeTab === "imageObra" ? "active" : ""}`}
+            onClick={() => setActiveTab("imageObra")}
+          >
+            Img. Obra
+          </button>
+          <button
+            className="temporal-visibility-btn"
+            title={imageObraLayersVisible ? "Ocultar camadas Obra" : "Mostrar camadas Obra"}
+            onClick={(e) => { e.stopPropagation(); setImageObraLayersVisible(!imageObraLayersVisible); }}
+          >
+            {imageObraLayersVisible
+              ? <FaRegEye size={13} color="#444" />
+              : <FaRegEyeSlash size={13} color="#aaa" />}
+          </button>
+        </div>
       </div>
 
       <div className="temporal-content">
@@ -266,6 +341,19 @@ export default function TemporalLayersPanel({
           </div>
         )}
 
+        {activeTab === "imageObra" && (
+          <div className="temporal-filter-container">
+            <div className="temporal-filter-row">
+              <label>Início:</label>
+              <input type="date" className="temporal-filter-input" value={imgObraStart} onChange={e => setImgObraStart(e.target.value)} />
+            </div>
+            <div className="temporal-filter-row">
+              <label>Fim:</label>
+              <input type="date" className="temporal-filter-input" value={imgObraEnd} onChange={e => setImgObraEnd(e.target.value)} />
+            </div>
+          </div>
+        )}
+
         <div className="temporal-calendar-wrapper">
           <Calendar
             onClickDay={handleDayClick}
@@ -293,6 +381,9 @@ export default function TemporalLayersPanel({
           {activeTab === "image360" && image360DateFilter.start && (
             <span>Filtro de Imagem 360 ativo</span>
           )}
+          {activeTab === "imageObra" && imageObraDateFilter.start && (
+            <span>Filtro de Imagem Obra ativo</span>
+          )}
         </div>
         <div className="temporal-actions">
           <button className="temporal-btn-limpar" onClick={handleClear}>Limpar</button>
@@ -312,6 +403,10 @@ export default function TemporalLayersPanel({
         <div className="temporal-legend-item">
           <div className="temporal-legend-dot image360" style={{ background: '#2ecc71' }}></div>
           <span>imagem 360</span>
+        </div>
+        <div className="temporal-legend-item">
+          <div className="temporal-legend-dot imageObra" style={{ background: '#f1c40f' }}></div>
+          <span>img. obra</span>
         </div>
       </div>
     </div>

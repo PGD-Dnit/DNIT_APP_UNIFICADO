@@ -133,6 +133,7 @@ export function buildExposureMap(
             g.attributes?.acquisitiondate ??
             g.attributes?.acquisitionDate ??
             g.attributes?.AcquisitionDate ??
+            g.attributes?.data ??
             null;
 
         const acqMs = toEpochMs(acqRaw);
@@ -203,6 +204,7 @@ export async function queryExposuresAtPoint(
                         feature.attributes?.acquisitiondate ??
                         feature.attributes?.acquisitionDate ??
                         feature.attributes?.AcquisitionDate ??
+                        feature.attributes?.data ??
                         null;
 
                     const acqMs = toEpochMs(acqRaw);

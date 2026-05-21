@@ -2,11 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../../core/store";
+import type { ExposureRef } from "../../core/types";
 import DualImageViewer from "./DualImageViewer";
 import { MarkedCalendar } from "../../components/MarkedCalendar";
 import { listAttachments, buildAttachmentUrl } from "../../core/apiClient";
 import MiniMapImageView from "./MiniMapImageView";
-import ImageToggleBtn from "./ImageToggleBtn";
+//import ImageToggleBtn from "./ImageToggleBtn";
 import ImageGallery, { type AttachmentItem } from "./ImageGallery";
 import "./CompareImageScreen.css";
 
@@ -33,7 +34,7 @@ function sameDay(a: Date, b: Date) {
 
 /** Hook interno que carrega todos os attachments de um ExposureRef */
 function useAllAttachments(
-    exp: ReturnType<typeof useAppStore>["selectedImageLeft"] | null,
+    exp: ExposureRef | null,
     setStoreImg: (p: any) => void
 ) {
     const [status, setStatus] = useState<ImgStatus>("waiting");
@@ -71,7 +72,7 @@ function useAllAttachments(
         })();
 
         return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [exp?.layerUrl, exp?.objectId]);
 
     const select = (att: AttachmentItem, exp2: typeof exp) => {
@@ -173,7 +174,7 @@ export default function CompareImageScreen() {
                 }}
             />
 
-            <ImageToggleBtn />
+            {/* <ImageToggleBtn /> */}
         </div>
     );
 }

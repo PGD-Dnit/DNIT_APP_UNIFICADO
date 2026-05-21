@@ -424,6 +424,13 @@ const SwipePage: React.FC = () => {
     const loadPlanetMosaics = useAppStore((s) => s.loadPlanetMosaics);
     const setPlanetSelectedId = useAppStore((s) => s.setPlanetSelectedId);
 
+    const droneLayersVisible = useAppStore((s) => s.droneLayersVisible);
+    const setDroneLayersVisible = useAppStore((s) => s.setDroneLayersVisible);
+    const image360LayersVisible = useAppStore((s) => s.image360LayersVisible);
+    const setImage360LayersVisible = useAppStore((s) => s.setImage360LayersVisible);
+    const imageObraLayersVisible = useAppStore((s) => s.imageObraLayersVisible);
+    const setImageObraLayersVisible = useAppStore((s) => s.setImageObraLayersVisible);
+
     const [leftMosaicId, setLeftMosaicId] = useState<string | null>(null);
     const [rightMosaicId, setRightMosaicId] = useState<string | null>(null);
 
@@ -460,6 +467,19 @@ const SwipePage: React.FC = () => {
     const [selectedLeftDroneDay, setSelectedLeftDroneDay] = useState<string | null>(null);
     const [selectedRightDroneDay, setSelectedRightDroneDay] = useState<string | null>(null);
     const swipeWidgetRef = useRef<__esri.Swipe | null>(null);
+
+    // Toggle visibilidade das camadas drone (map-image-*) quando o store mudar
+    useEffect(() => {
+        const views = getActiveViews();
+        views.forEach((view) => {
+            view.map?.layers.forEach((layer: any) => {
+                if (typeof layer.id === "string" && layer.id.startsWith("map-image-")) {
+                    layer.visible = droneLayersVisible;
+                }
+            });
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [droneLayersVisible]);
 
     useEffect(() => {
         const handler = (event: PromiseRejectionEvent) => {

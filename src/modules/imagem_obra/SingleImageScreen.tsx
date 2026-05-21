@@ -209,7 +209,7 @@ export default function SingleImageScreen() {
             />
 
             {/* Botão Comparar/Voltar — centro inferior */}
-            <ImageToggleBtn />
+            {/*  <ImageToggleBtn /> */}
         </div>
     );
 }

@@ -7,7 +7,7 @@
   background: var(--panel, #ffffff);
   border-radius: 12px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-  width: 320px;
+  width: 500px;
   min-width: 320px;
   padding: 12px;
   display: flex;
@@ -85,11 +85,49 @@
   font-weight: 600;
 }
 
+/* Wrapper que agrupa o botão de aba + o olhinho de visibilidade */
+.temporal-tab-with-eye {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.temporal-tab-with-eye .temporal-tab-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Botão olhinho de visibilidade */
+.temporal-visibility-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: #555;
+}
+
+.temporal-visibility-btn:hover {
+  background: #e2e8f0;
+}
+
+
 /* Content Area */
 .temporal-content {
+  width: 320px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin: 0 auto;
 }
 
 /* Swipe Selection (Mosaics) */
@@ -221,6 +259,10 @@
 
 .temp-dot.image360 {
   background-color: #2ecc71;
+}
+
+.temp-dot.imageObra {
+  background-color: #f1c40f;
 }
 
 .react-calendar__tile--active {

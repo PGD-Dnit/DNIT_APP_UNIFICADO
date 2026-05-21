@@ -1,4 +1,4 @@
-import IconCheckbox from "./IconCheckbox";
+import IconCheckbox from "../../components/IconCheckbox";
 
 interface FeatureService {
   id: string;

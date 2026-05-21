@@ -1,4 +1,4 @@
-import { FaRegEye , FaRegEyeSlash } from "react-icons/fa";
+import { FaRegEye, FaRegEyeSlash } from "react-icons/fa";
 
 interface Props {
   checked: boolean;
@@ -31,11 +31,8 @@ const IconCheckbox: React.FC<Props> = ({ checked, onToggle, label }) => {
         cursor: "pointer",
         background: "transparent",
         border: "1px solid #e5e7eb",
-        //borderRadius: 8,
         borderRadius: 5,
-        //padding: "10px 12px",
-        padding: "5px 6px",     
-        
+        padding: "5px 6px",
       }}
       title={label}
     >
@@ -43,9 +40,8 @@ const IconCheckbox: React.FC<Props> = ({ checked, onToggle, label }) => {
       {checked ? (
         <FaRegEye size={15} color="#000000ff" />
       ) : (
-        < FaRegEyeSlash size={15} color="#6b7280" />
+        <FaRegEyeSlash size={15} color="#6b7280" />
       )}
-      
     </button>
   );
 };

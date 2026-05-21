@@ -27,6 +27,7 @@ export function SetupImageOnView(view: MapView) {
     let initDone = false;
     let initPromise: Promise<void> | null = null;
     let unsubscribeStore: (() => void) | null = null;
+    let unsubscribeVisibility: (() => void) | null = null;
 
     async function ensureLayersLoaded() {
         if (initDone) return;
@@ -87,16 +88,32 @@ export function SetupImageOnView(view: MapView) {
                         query.where = "1=1";
                         query.returnGeometry = false;
                         const result = await lyr.queryFeatures(query);
-                        result.features.forEach(f => {
-                            const dateVal = f.attributes?.acquisitiondate ?? f.attributes?.acquisitionDate ?? f.attributes?.AcquisitionDate;
-                            const ms = toEpochMs(dateVal);
-                            if (ms) {
-                                const d = new Date(ms);
-                                datesSet.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+                        
+                        result.features.forEach((f) => {
+                            // Mapeia os campos possíveis (incluindo "data" da camada Obras)
+                            const dateVal = f.attributes?.acquisitiondate ?? f.attributes?.acquisitionDate ?? f.attributes?.AcquisitionDate ?? f.attributes?.data ?? f.attributes?.data_medicao ?? f.attributes?.created_date;
+                            let dateStr: string | null = null;
+                            
+                            if (typeof dateVal === "string" && /^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
+                                // Se já é uma string no formato YYYY-MM-DD, usamos diretamente
+                                // para não sofrer alteração de fuso horário local ao converter para Date
+                                dateStr = dateVal.slice(0, 10);
+                            } else {
+                                const ms = toEpochMs(dateVal);
+                                if (ms) {
+                                    // Para timestamps UTC de meia-noite, usamos os métodos getUTC()
+                                    // garantindo que a data permaneça no dia original
+                                    const d = new Date(ms);
+                                    dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+                                }
+                            }
+                            
+                            if (dateStr) {
+                                datesSet.add(dateStr);
                             }
                         });
                     } catch (e) {
-                        console.warn("[SetupImage] falha ao buscar datas de", lyr.title);
+                        console.warn("[SetupImage] falha ao buscar datas de", lyr.title, e);
                     }
                 }));
                 if (!disposed) {
@@ -113,28 +130,42 @@ export function SetupImageOnView(view: MapView) {
                 if (disposed) return;
 
                 imgLayers.forEach(layer => {
-                    const fieldObj = layer.fields?.find(f => f.name.toLowerCase() === "acquisitiondate");
-                    const fieldName = fieldObj ? fieldObj.name : "acquisitionDate"; // fallback
+                    // Procura o campo correto dinamicamente entre as opções conhecidas
+                    const fieldObj = layer.fields?.find(f => {
+                        const low = f.name.toLowerCase();
+                        return low === "acquisitiondate" || low === "data" || low === "data_medicao";
+                    });
+                    
+                    const fieldName = fieldObj ? fieldObj.name : (layer.title?.toLowerCase().includes("obras") ? "data" : "acquisitionDate");
+                    const isStringField = fieldObj ? (fieldObj.type === "string" || fieldObj.type === "esriFieldTypeString") : false;
 
                     let expr = "1=1";
                     if (filter.start || filter.end) {
                         const conditions = [];
                         
-                        const formatTimestamp = (ms: number) => {
+                        const formatSqlValue = (ms: number, isEnd: boolean) => {
                             const d = new Date(ms);
                             const y = d.getUTCFullYear();
                             const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
                             const day = String(d.getUTCDate()).padStart(2, '0');
-                            const h = String(d.getUTCHours()).padStart(2, '0');
-                            const m = String(d.getUTCMinutes()).padStart(2, '0');
-                            const s = String(d.getUTCSeconds()).padStart(2, '0');
+                            
+                            if (isStringField) {
+                                // Para colunas do tipo String (ex: "2026-02-26")
+                                return `'${y}-${mo}-${day}'`;
+                            }
+                            
+                            // Para colunas do tipo Date
+                            const h = isEnd ? "23" : "00";
+                            const m = isEnd ? "59" : "00";
+                            const s = isEnd ? "59" : "00";
                             return `TIMESTAMP '${y}-${mo}-${day} ${h}:${m}:${s}'`;
                         };
 
-                        if (filter.start) conditions.push(`${fieldName} >= ${formatTimestamp(filter.start)}`);
-                        if (filter.end) conditions.push(`${fieldName} <= ${formatTimestamp(filter.end)}`);
+                        if (filter.start) conditions.push(`${fieldName} >= ${formatSqlValue(filter.start, false)}`);
+                        if (filter.end) conditions.push(`${fieldName} <= ${formatSqlValue(filter.end, true)}`);
                         expr = conditions.join(" AND ");
                     }
+                    
                     layer.definitionExpression = expr;
                 });
             };
@@ -142,7 +173,7 @@ export function SetupImageOnView(view: MapView) {
             // Apply immediately
             applyFilter(useAppStore.getState().imageObraDateFilter);
 
-            // Subscribe to future changes
+            // Subscribe to date filter changes
             let lastFilter = useAppStore.getState().imageObraDateFilter;
             unsubscribeStore = useAppStore.subscribe((state) => {
                 const newFilter = state.imageObraDateFilter;
@@ -151,6 +182,20 @@ export function SetupImageOnView(view: MapView) {
                     applyFilter(newFilter);
                 }
             });
+
+            // Subscribe to visibility toggle
+            let lastVisible = useAppStore.getState().imageObraLayersVisible;
+            unsubscribeVisibility = useAppStore.subscribe((state) => {
+                const newVisible = state.imageObraLayersVisible;
+                if (newVisible !== lastVisible) {
+                    lastVisible = newVisible;
+                    imgLayers.forEach(lyr => { lyr.visible = newVisible; });
+                }
+            });
+
+            // Apply initial visibility
+            const initialVisible = useAppStore.getState().imageObraLayersVisible;
+            imgLayers.forEach(lyr => { lyr.visible = initialVisible; });
         })();
 
         return initPromise;
@@ -299,6 +344,10 @@ export function SetupImageOnView(view: MapView) {
         if (unsubscribeStore) {
             unsubscribeStore();
             unsubscribeStore = null;
+        }
+        if (unsubscribeVisibility) {
+            unsubscribeVisibility();
+            unsubscribeVisibility = null;
         }
 
         // remove só as layers criadas por este setup (não remove se já existiam)

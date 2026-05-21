@@ -73,6 +73,7 @@ export function Setup360OnView(view: MapView) {
     let initDone = false;
     let initPromise: Promise<void> | null = null;
     let unsubscribeStore: (() => void) | null = null;
+    let unsubscribeVisibility: (() => void) | null = null;
 
     async function ensureLayersLoaded() {
         if (initDone) return;
@@ -138,7 +139,7 @@ export function Setup360OnView(view: MapView) {
                             const ms = toEpochMs(dateVal);
                             if (ms) {
                                 const d = new Date(ms);
-                                datesSet.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+                                datesSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
                             }
                         });
                     } catch (e) {
@@ -153,7 +154,7 @@ export function Setup360OnView(view: MapView) {
 
             const applyFilter = async (filter: { start: number | null, end: number | null }) => {
                 if (disposed) return;
-                
+
                 // Ensure layers are loaded so we can inspect layer.fields
                 await Promise.all(oiLayers.map(lyr => lyr.load()));
                 if (disposed) return;
@@ -165,7 +166,7 @@ export function Setup360OnView(view: MapView) {
                     let expr = "1=1";
                     if (filter.start || filter.end) {
                         const conditions = [];
-                        
+
                         const formatTimestamp = (ms: number) => {
                             const d = new Date(ms);
                             const y = d.getUTCFullYear();
@@ -188,7 +189,7 @@ export function Setup360OnView(view: MapView) {
             // Apply immediately
             applyFilter(useAppStore.getState().image360DateFilter);
 
-            // Subscribe to future changes
+            // Subscribe to date filter changes
             let lastFilter = useAppStore.getState().image360DateFilter;
             unsubscribeStore = useAppStore.subscribe((state) => {
                 const newFilter = state.image360DateFilter;
@@ -197,6 +198,20 @@ export function Setup360OnView(view: MapView) {
                     applyFilter(newFilter);
                 }
             });
+
+            // Subscribe to visibility toggle
+            let lastVisible = useAppStore.getState().image360LayersVisible;
+            unsubscribeVisibility = useAppStore.subscribe((state) => {
+                const newVisible = state.image360LayersVisible;
+                if (newVisible !== lastVisible) {
+                    lastVisible = newVisible;
+                    oiLayers.forEach(lyr => { lyr.visible = newVisible; });
+                }
+            });
+
+            // Apply initial visibility
+            const initialVisible = useAppStore.getState().image360LayersVisible;
+            oiLayers.forEach(lyr => { lyr.visible = initialVisible; });
         })();
 
         return initPromise;
@@ -344,6 +359,10 @@ export function Setup360OnView(view: MapView) {
         if (unsubscribeStore) {
             unsubscribeStore();
             unsubscribeStore = null;
+        }
+        if (unsubscribeVisibility) {
+            unsubscribeVisibility();
+            unsubscribeVisibility = null;
         }
 
         // remove só as layers criadas por este setup (não remove se já existiam)

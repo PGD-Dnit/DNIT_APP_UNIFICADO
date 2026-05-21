@@ -121,6 +121,16 @@ type State = {
     imageObraMapMsg: string | null;
     setImageObraMapMsg: (msg: string | null) => void;
 
+    // ✅ Visibilidade global de grupos de camadas
+    droneLayersVisible: boolean;
+    setDroneLayersVisible: (v: boolean) => void;
+
+    image360LayersVisible: boolean;
+    setImage360LayersVisible: (v: boolean) => void;
+
+    imageObraLayersVisible: boolean;
+    setImageObraLayersVisible: (v: boolean) => void;
+
     /* =========================
        ✅ Planet mosaics (shared)
        ========================= */
@@ -230,6 +240,15 @@ export const useAppStore = create<State>((set, get) => ({
 
     imageObraMapMsg: null,
     setImageObraMapMsg: (msg) => set({ imageObraMapMsg: msg }),
+
+    droneLayersVisible: true,
+    setDroneLayersVisible: (v) => set({ droneLayersVisible: v }),
+
+    image360LayersVisible: true,
+    setImage360LayersVisible: (v) => set({ image360LayersVisible: v }),
+
+    imageObraLayersVisible: true,
+    setImageObraLayersVisible: (v) => set({ imageObraLayersVisible: v }),
 
     /* =========================
        ✅ Planet mosaics
