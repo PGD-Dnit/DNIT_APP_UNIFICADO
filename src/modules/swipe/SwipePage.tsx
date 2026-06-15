@@ -11,8 +11,18 @@ import Viewpoint from "@arcgis/core/Viewpoint";
 import "./SwipePage.css";
 import { useAppStore } from "../../core/store";
 import { CONFIG } from "../../core/config";
+import { buildPlanetTileUrl } from "../../core/mosaicUtils";
 import { Setup360OnView } from "../imagem_360/Setup360OnView";
 import { SetupImageOnView } from "../imagem_obra/SetupImageOnView";
+import {
+    type MapImageItem,
+    parseDroneServiceName,
+    parseExtent,
+    getExtentCenter,
+    getExtentArea,
+    groupDroneImages,
+    formatCoord,
+} from "../../core/droneUtils";
 
 type LayerItem = {
     id: string;
@@ -20,402 +30,6 @@ type LayerItem = {
     url: string;
 };
 
-type ExtentBox = {
-    xmin: number;
-    ymin: number;
-    xmax: number;
-    ymax: number;
-    wkid?: number;
-};
-
-type CenterPoint = {
-    x: number;
-    y: number;
-    wkid?: number;
-};
-
-type MapImageItem = {
-    id: string;
-    title: string;
-    url: string;
-    descricao?: string | null;
-    created?: number;
-    modified?: number;
-    serviceUrl?: string;
-    portalItemUrl?: string;
-    thumbnailUrl?: string;
-    tipo?: string;
-    owner?: string;
-    access?: string;
-    tags?: string[];
-
-    serviceName?: string | null;
-    rawServiceName?: string | null;
-    pointName?: string | null;
-    pointKey?: string | null;
-    dayKey?: string | null;
-    sourceDateMs?: number | null;
-
-    fullExtent?: ExtentBox | null;
-    initialExtent?: ExtentBox | null;
-    center?: CenterPoint | null;
-    areaM2?: number | null;
-};
-
-type DroneGroup = {
-    groupKey: string;
-    pointKey: string;
-    pointName: string;
-    items: MapImageItem[];
-    latestItem: MapImageItem | null;
-    representativeCenter: CenterPoint | null;
-    representativeExtent: ExtentBox | null;
-};
-
-const STRONG_OVERLAP_THRESHOLD = 0.6;
-const OVERLAP_THRESHOLD = 0.3;
-const CENTER_DISTANCE_METERS = 500;
-const NAME_DISTANCE_METERS = 200;
-
-const safeNum = (v: any): number | null => {
-    const n = typeof v === "number" ? v : Number(v);
-    return Number.isFinite(n) ? n : null;
-};
-
-const normalizePointKey = (value: string): string => {
-    return value
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/\.(tif|tiff)$/gi, "")
-        .replace(/_tif$/gi, "")
-        .replace(/-tif$/gi, "")
-        .replace(/[_\s]+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "")
-        .toLowerCase();
-};
-
-const parseDatePartsToDayKey = (yearRaw: string, monthRaw: string, dayRaw: string) => {
-    const yearNum = Number(yearRaw.length === 2 ? `20${yearRaw}` : yearRaw);
-    const monthNum = Number(monthRaw);
-    const dayNum = Number(dayRaw);
-
-    const d = new Date(yearNum, monthNum - 1, dayNum);
-    const valid =
-        d.getFullYear() === yearNum &&
-        d.getMonth() === monthNum - 1 &&
-        d.getDate() === dayNum;
-
-    if (!valid) {
-        return {
-            dayKey: null,
-            sourceDateMs: null,
-        };
-    }
-
-    return {
-        dayKey: `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`,
-        sourceDateMs: d.getTime(),
-    };
-};
-
-/**
- * Exemplos aceitos:
- * Ponte_Autaz_Mirim_03_03_26_tif
- * Ponte_autaz_mirim_20_02_2026_tif
- * drone_formosa_02_09_2025
- */
-const parseDroneServiceName = (serviceName: string) => {
-    const cleaned = serviceName
-        .trim()
-        .replace(/\/+$/, "")
-        .replace(/\.(tif|tiff)$/i, "")
-        .replace(/_tif$/i, "")
-        .replace(/-tif$/i, "");
-
-    const regex = /^(.*?)[_-](\d{2})[_-](\d{2})[_-](\d{2}|\d{4})$/i;
-    const match = cleaned.match(regex);
-
-    if (!match) {
-        return {
-            rawServiceName: cleaned,
-            pointName: cleaned || null,
-            pointKey: cleaned ? normalizePointKey(cleaned) : null,
-            dayKey: null,
-            sourceDateMs: null,
-        };
-    }
-
-    const [, rawPointName, dd, mm, yyyyOrYY] = match;
-    const parsedDate = parseDatePartsToDayKey(yyyyOrYY, mm, dd);
-
-    return {
-        rawServiceName: cleaned,
-        pointName: rawPointName || null,
-        pointKey: rawPointName ? normalizePointKey(rawPointName) : null,
-        dayKey: parsedDate.dayKey,
-        sourceDateMs: parsedDate.sourceDateMs,
-    };
-};
-
-const parseExtent = (raw: any): ExtentBox | null => {
-    if (!raw || typeof raw !== "object") return null;
-
-    const xmin = safeNum(raw.xmin ?? raw.XMin);
-    const ymin = safeNum(raw.ymin ?? raw.YMin);
-    const xmax = safeNum(raw.xmax ?? raw.XMax);
-    const ymax = safeNum(raw.ymax ?? raw.YMax);
-
-    if (
-        xmin == null ||
-        ymin == null ||
-        xmax == null ||
-        ymax == null ||
-        xmax <= xmin ||
-        ymax <= ymin
-    ) {
-        return null;
-    }
-
-    const wkid =
-        safeNum(raw?.spatialReference?.wkid) ??
-        safeNum(raw?.spatialReference?.latestWkid) ??
-        safeNum(raw?.wkid) ??
-        undefined;
-
-    return { xmin, ymin, xmax, ymax, wkid };
-};
-
-const getExtentCenter = (extent: ExtentBox | null | undefined): CenterPoint | null => {
-    if (!extent) return null;
-
-    return {
-        x: (extent.xmin + extent.xmax) / 2,
-        y: (extent.ymin + extent.ymax) / 2,
-        wkid: extent.wkid,
-    };
-};
-
-const getExtentArea = (extent: ExtentBox | null | undefined): number | null => {
-    if (!extent) return null;
-
-    const width = extent.xmax - extent.xmin;
-    const height = extent.ymax - extent.ymin;
-
-    if (width <= 0 || height <= 0) return null;
-
-    return width * height;
-};
-
-/**
- * Retorna null se os centros não existirem OU se estiverem em CRS diferentes
- * (wkid definido e distinto) — distância entre projeções diferentes é inválida.
- */
-const distanceMeters = (
-    a: CenterPoint | null | undefined,
-    b: CenterPoint | null | undefined
-): number | null => {
-    if (!a || !b) return null;
-
-    if (a.wkid != null && b.wkid != null && a.wkid !== b.wkid) return null;
-
-    const dx = a.x - b.x;
-    const dy = a.y - b.y;
-
-    return Math.sqrt(dx * dx + dy * dy);
-};
-
-const getIntersectionArea = (
-    a: ExtentBox | null | undefined,
-    b: ExtentBox | null | undefined
-): number => {
-    if (!a || !b) return 0;
-
-    const ixmin = Math.max(a.xmin, b.xmin);
-    const iymin = Math.max(a.ymin, b.ymin);
-    const ixmax = Math.min(a.xmax, b.xmax);
-    const iymax = Math.min(a.ymax, b.ymax);
-
-    if (ixmax <= ixmin || iymax <= iymin) return 0;
-
-    return (ixmax - ixmin) * (iymax - iymin);
-};
-
-const getIntersectionPctOnSmaller = (
-    a: ExtentBox | null | undefined,
-    b: ExtentBox | null | undefined
-): number => {
-    const areaA = getExtentArea(a);
-    const areaB = getExtentArea(b);
-
-    if (!areaA || !areaB) return 0;
-
-    const minArea = Math.min(areaA, areaB);
-    if (!minArea) return 0;
-
-    return getIntersectionArea(a, b) / minArea;
-};
-
-const averageCenters = (items: MapImageItem[]): CenterPoint | null => {
-    const centers = items
-        .map((i) => i.center)
-        .filter((c): c is CenterPoint => !!c);
-
-    if (!centers.length) return null;
-
-    const sum = centers.reduce(
-        (acc, c) => {
-            acc.x += c.x;
-            acc.y += c.y;
-            return acc;
-        },
-        { x: 0, y: 0 }
-    );
-
-    return {
-        x: sum.x / centers.length,
-        y: sum.y / centers.length,
-        wkid: centers[0].wkid,
-    };
-};
-
-const namesLookEquivalent = (a?: string | null, b?: string | null) => {
-    if (!a || !b) return false;
-    return normalizePointKey(a) === normalizePointKey(b);
-};
-
-const buildSimilarity = (a: MapImageItem, b: MapImageItem) => {
-    const overlapPct = getIntersectionPctOnSmaller(a.fullExtent, b.fullExtent);
-    const centerDist = distanceMeters(a.center, b.center);
-
-    const sameLogicalName =
-        namesLookEquivalent(a.pointKey, b.pointKey) ||
-        namesLookEquivalent(a.pointName, b.pointName) ||
-        namesLookEquivalent(a.rawServiceName, b.rawServiceName) ||
-        namesLookEquivalent(a.serviceName, b.serviceName);
-
-    const strongOverlap = overlapPct >= STRONG_OVERLAP_THRESHOLD;
-    const overlapAndNear =
-        overlapPct >= OVERLAP_THRESHOLD &&
-        centerDist != null &&
-        centerDist <= CENTER_DISTANCE_METERS;
-
-    const nearAndSameName =
-        centerDist != null &&
-        centerDist <= NAME_DISTANCE_METERS &&
-        sameLogicalName;
-
-    const sameNameOnly =
-        sameLogicalName &&
-        centerDist === null &&
-        namesLookEquivalent(a.pointKey, b.pointKey);
-
-    const isSameGroup = strongOverlap || overlapAndNear || nearAndSameName || sameNameOnly;
-
-    return {
-        overlapPct,
-        centerDist,
-        sameLogicalName,
-        strongOverlap,
-        overlapAndNear,
-        nearAndSameName,
-        sameNameOnly,
-        isSameGroup,
-    };
-};
-
-const itemsAreSameSpatialGroup = (
-    candidate: MapImageItem,
-    groupItems: MapImageItem[]
-): boolean => {
-    if (!groupItems.length) return false;
-    return groupItems.some((existing) => buildSimilarity(candidate, existing).isSameGroup);
-};
-
-const inferGroupLabel = (items: MapImageItem[]) => {
-    const names = items
-        .map((i) => i.pointName || i.pointKey || i.rawServiceName || i.serviceName)
-        .filter((v): v is string => !!v);
-
-    if (!names.length) return "grupo-drone";
-
-    const normalized = names.map((n) => normalizePointKey(n));
-    const counts = new Map<string, number>();
-
-    normalized.forEach((n) => {
-        counts.set(n, (counts.get(n) || 0) + 1);
-    });
-
-    const winner = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-    return winner || "grupo-drone";
-};
-
-const groupDroneImages = (items: MapImageItem[]): DroneGroup[] => {
-    const sorted = [...items].sort((a, b) => {
-        const aTime = a.sourceDateMs ?? 0;
-        const bTime = b.sourceDateMs ?? 0;
-        return bTime - aTime;
-    });
-
-    const spatialBuckets: MapImageItem[][] = [];
-
-    sorted.forEach((item) => {
-        let matchedBucket: MapImageItem[] | null = null;
-
-        for (const bucket of spatialBuckets) {
-            if (itemsAreSameSpatialGroup(item, bucket)) {
-                matchedBucket = bucket;
-                break;
-            }
-        }
-
-        if (matchedBucket) {
-            matchedBucket.push(item);
-        } else {
-            spatialBuckets.push([item]);
-        }
-    });
-
-    const groups = spatialBuckets.map((bucket, index) => {
-        const bucketSorted = [...bucket].sort((a, b) => {
-            const aTime = a.sourceDateMs ?? 0;
-            const bTime = b.sourceDateMs ?? 0;
-            return bTime - aTime;
-        });
-
-        const latestItem = bucketSorted[0] ?? null;
-        const representativeCenter = averageCenters(bucketSorted);
-        const representativeExtent = latestItem?.fullExtent ?? null;
-
-        const inferredPointKey = inferGroupLabel(bucketSorted);
-
-        return {
-            groupKey: `${inferredPointKey}__${index + 1}`,
-            pointKey: inferredPointKey,
-            pointName:
-                latestItem?.pointName ||
-                latestItem?.pointKey ||
-                latestItem?.rawServiceName ||
-                latestItem?.serviceName ||
-                inferredPointKey,
-            items: bucketSorted,
-            latestItem,
-            representativeCenter,
-            representativeExtent,
-        };
-    });
-
-    return groups.sort((a, b) => {
-        const aTime = a.latestItem?.sourceDateMs ?? 0;
-        const bTime = b.latestItem?.sourceDateMs ?? 0;
-        return bTime - aTime;
-    });
-};
-
-const formatCoord = (value: number | null | undefined) => {
-    if (value == null || !Number.isFinite(value)) return "—";
-    return value.toFixed(2);
-};
 
 const SwipePage: React.FC = () => {
     const mosaics = useAppStore((s) => s.planetMosaics);
@@ -425,11 +39,11 @@ const SwipePage: React.FC = () => {
     const setPlanetSelectedId = useAppStore((s) => s.setPlanetSelectedId);
 
     const droneLayersVisible = useAppStore((s) => s.droneLayersVisible);
-    const setDroneLayersVisible = useAppStore((s) => s.setDroneLayersVisible);
-    const image360LayersVisible = useAppStore((s) => s.image360LayersVisible);
-    const setImage360LayersVisible = useAppStore((s) => s.setImage360LayersVisible);
-    const imageObraLayersVisible = useAppStore((s) => s.imageObraLayersVisible);
-    const setImageObraLayersVisible = useAppStore((s) => s.setImageObraLayersVisible);
+    // const setDroneLayersVisible = useAppStore((s) => s.setDroneLayersVisible);
+    // const image360LayersVisible = useAppStore((s) => s.image360LayersVisible);
+    // const setImage360LayersVisible = useAppStore((s) => s.setImage360LayersVisible);
+    // const imageObraLayersVisible = useAppStore((s) => s.imageObraLayersVisible);
+    // const setImageObraLayersVisible = useAppStore((s) => s.setImageObraLayersVisible);
 
     const [leftMosaicId, setLeftMosaicId] = useState<string | null>(null);
     const [rightMosaicId, setRightMosaicId] = useState<string | null>(null);
@@ -439,8 +53,12 @@ const SwipePage: React.FC = () => {
     const [loadingFeatures, setLoadingFeatures] = useState(true);
 
     const [mapReady, setMapReady] = useState(false);
-    const [showCamadas, setShowCamadas] = useState(false);
-    const [dualMode, setDualMode] = useState(false);
+    const showCamadas = useAppStore((s) => s.showCamadas);
+    const setShowCamadas = useAppStore((s) => s.setShowCamadas);
+    const dualMode = useAppStore((s) => s.dualMode);
+    // const setDualModeStore = useAppStore((s) => s.setDualMode);
+    const storeLastViewpoint = useAppStore((s) => s.lastViewpoint);
+    // const setStoreLastViewpoint = useAppStore((s) => s.setLastViewpoint);
 
     const lastViewpointRef = useRef<Viewpoint | null>(null);
 
@@ -467,6 +85,47 @@ const SwipePage: React.FC = () => {
     const [selectedLeftDroneDay, setSelectedLeftDroneDay] = useState<string | null>(null);
     const [selectedRightDroneDay, setSelectedRightDroneDay] = useState<string | null>(null);
     const swipeWidgetRef = useRef<__esri.Swipe | null>(null);
+
+    // Efeito para sincronizar e limpar viewpoint quando dualMode muda no store
+    const prevDualModeRef = useRef(dualMode);
+    useEffect(() => {
+        if (dualMode === prevDualModeRef.current) return;
+
+        if (dualMode) {
+            // Entrando no DualMode
+            if (swipeViewRef.current?.viewpoint) {
+                lastViewpointRef.current = swipeViewRef.current.viewpoint.clone();
+            }
+
+            swipeInitTokenRef.current += 1;
+            swipeSetupCleanupRef.current?.();
+            swipeSetupCleanupRef.current = null;
+        } else {
+            // Saindo do DualMode
+            if (leftViewRef.current?.viewpoint) {
+                lastViewpointRef.current = leftViewRef.current.viewpoint.clone();
+            }
+
+            leftInitTokenRef.current += 1;
+            rightInitTokenRef.current += 1;
+
+            leftSetupCleanupRef.current?.();
+            leftSetupCleanupRef.current = null;
+
+            rightSetupCleanupRef.current?.();
+            rightSetupCleanupRef.current = null;
+        }
+
+        setMapReady(false);
+        prevDualModeRef.current = dualMode;
+    }, [dualMode]);
+
+    // Sincronizar viewpoint do store com ref local ao montar
+    useEffect(() => {
+        if (storeLastViewpoint) {
+            lastViewpointRef.current = storeLastViewpoint.clone();
+        }
+    }, []);
 
     // Toggle visibilidade das camadas drone (map-image-*) quando o store mudar
     useEffect(() => {
@@ -1101,14 +760,13 @@ const SwipePage: React.FC = () => {
     const right = mosaics.find((m) => m.id === rightMosaicId) || left;
 
     const leftUrl = left
-        ? `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${left.id}`
+        ? buildPlanetTileUrl(left.id)
         : "";
 
     const rightUrl = right
-        ? `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${right.id}`
+        ? buildPlanetTileUrl(right.id)
         : "";
 
-    const iconClass = showCamadas ? "fa-solid fa-xmark" : "fa-solid fa-layer-group";
 
     const titleLeft = left?.when
         ? (() => {
@@ -1144,48 +802,9 @@ const SwipePage: React.FC = () => {
         })()
         : "?";
 
-    const toggleDualMode = () => {
-        if (!dualMode) {
-            if (swipeViewRef.current?.viewpoint) {
-                lastViewpointRef.current = swipeViewRef.current.viewpoint.clone();
-            }
-
-            swipeInitTokenRef.current += 1;
-            swipeSetupCleanupRef.current?.();
-            swipeSetupCleanupRef.current = null;
-        } else {
-            if (leftViewRef.current?.viewpoint) {
-                lastViewpointRef.current = leftViewRef.current.viewpoint.clone();
-            }
-
-            leftInitTokenRef.current += 1;
-            rightInitTokenRef.current += 1;
-
-            leftSetupCleanupRef.current?.();
-            leftSetupCleanupRef.current = null;
-
-            rightSetupCleanupRef.current?.();
-            rightSetupCleanupRef.current = null;
-        }
-
-        setMapReady(false);
-        setDualMode((v) => !v);
-    };
-
     return (
         <div id="webmap-container">
             <section id="mapa">
-                <button
-                    className="btn-dualmode"
-                    title={dualMode ? "Voltar para Swipe" : "Travar swipe e usar 2 mapas independentes"}
-                    onClick={toggleDualMode}
-                >
-                    {dualMode ? (
-                        <i className="fa-solid fa-lock"></i>
-                    ) : (
-                        <i className="fa-solid fa-lock-open"></i>
-                    )}
-                </button>
 
                 {leftUrl && rightUrl ? (
                     <>
@@ -1294,12 +913,6 @@ const SwipePage: React.FC = () => {
                                 }}
                             />
                         )}
-
-                        <i
-                            className={`${iconClass} btn-camadas-icon`}
-                            title={showCamadas ? "Esconder camadas" : "Mostrar camadas"}
-                            onClick={() => setShowCamadas(!showCamadas)}
-                        />
 
                         <aside className={`camadas ${showCamadas ? "aberta" : "fechada"}`}>
                             <div className="camadas-header">

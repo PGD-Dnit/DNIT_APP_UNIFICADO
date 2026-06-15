@@ -20,6 +20,9 @@ interface Props {
   // Handlers for side selection so parent can keep UI updated
   selectedSide?: SwipeSide;
   onSideChange?: (side: SwipeSide) => void;
+
+  /** Quando true, oculta a seleção de lado esquerdo/direito (modo mapa único) */
+  hideSideSelector?: boolean;
 }
 
 export default function TemporalLayersPanel({
@@ -30,7 +33,8 @@ export default function TemporalLayersPanel({
   onMosaicApply,
   onDroneApply,
   selectedSide = "left",
-  onSideChange
+  onSideChange,
+  hideSideSelector = false,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TemporalTab>("mosaics");
 
@@ -292,7 +296,7 @@ export default function TemporalLayersPanel({
       </div>
 
       <div className="temporal-content">
-        {(activeTab === "mosaics" || activeTab === "drone") && (
+        {(activeTab === "mosaics" || activeTab === "drone") && !hideSideSelector && (
           <div className="temporal-swipe-selection">
             <label>Aplicar no swipe / mapas:</label>
             <div className="temporal-swipe-buttons">
@@ -310,6 +314,14 @@ export default function TemporalLayersPanel({
               </button>
             </div>
             <span style={{ fontSize: "0.75rem", color: "#888", marginTop: 4 }}>
+              Clique em uma data para alterar o {activeTab === "mosaics" ? "mosaic" : "drone"}
+            </span>
+          </div>
+        )}
+
+        {(activeTab === "mosaics" || activeTab === "drone") && hideSideSelector && (
+          <div className="temporal-swipe-selection">
+            <span style={{ fontSize: "0.75rem", color: "#888" }}>
               Clique em uma data para alterar o {activeTab === "mosaics" ? "mosaic" : "drone"}
             </span>
           </div>

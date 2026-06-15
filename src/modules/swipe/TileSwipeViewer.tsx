@@ -6,8 +6,11 @@ import Swipe from "@arcgis/core/widgets/Swipe";
 import Search from "@arcgis/core/widgets/Search";
 import Compass from "@arcgis/core/widgets/Compass";
 import TemporalLayersPanel from "./TemporalLayersPanel";
+import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 import "./TileSwipeViewer.css";
-import { CONFIG } from "../../core/config";
+import { buildPlanetTileUrl } from "../../core/mosaicUtils";
+import { useAppStore } from "../../core/store";
+import MapToolbar from "../../components/MapToolbar";
 
 
 interface Props {
@@ -40,8 +43,12 @@ export default function TileSwipeViewer({
   const leftLayerRef = useRef<WebTileLayer | null>(null);
   const rightLayerRef = useRef<WebTileLayer | null>(null);
 
-  // 🗓️ Estado de exibição do painel temporal
-  const [showTemporalPanel, setShowTemporalPanel] = useState(false);
+  const setLastViewpoint = useAppStore((s) => s.setLastViewpoint);
+
+  // 🗓️ Painel temporal — estado no store para persistir entre trocas de modo
+  const showTemporalPanel = useAppStore((s) => s.showTemporalPanel);
+  const setShowTemporalPanel = useAppStore((s) => s.setShowTemporalPanel);
+
   const [selectedSidePanel, setSelectedSidePanel] = useState<"left" | "right">("left");
 
   // 🌍 URLs ativas das camadas
@@ -141,6 +148,15 @@ export default function TileSwipeViewer({
       });
     }
 
+    const vpWatch = reactiveUtils.watch(
+      () => view.viewpoint,
+      (vp) => {
+        if (vp) {
+          setLastViewpoint(vp.clone());
+        }
+      }
+    );
+
     view.when(() => {
       if (initialViewpoint && initialViewpoint.rotation) {
         view.rotation = initialViewpoint.rotation;
@@ -149,6 +165,7 @@ export default function TileSwipeViewer({
     });
 
     return () => {
+      try { vpWatch.remove(); } catch { }
       swipe.destroy();
       view.destroy();
     };
@@ -171,7 +188,7 @@ export default function TileSwipeViewer({
 
   const handleMosaicApply = (side: "left" | "right", mosaic: any) => {
     if (!mosaic?.id) return;
-    const url = `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaic.id}`;
+    const url = buildPlanetTileUrl(mosaic.id);
 
     let formatted = mosaic.when || mosaic.label || "Sem data";
     const match = String(formatted).match(/(\d{4})[-_/\.](\d{2})/);
@@ -216,38 +233,8 @@ export default function TileSwipeViewer({
         </div>
       </div>
 
-      {/* Botão para abrir/fechar o painel unificado — sempre visível */}
-      <div style={{ zIndex: 4000 }}>
-        <button
-          title="Calendário com filtro"
-          onClick={() => setShowTemporalPanel(prev => !prev)}
-          style={{
-            position: "absolute",
-            top: "186px",
-            left: "15px",
-            width: "36px",
-            height: "36px",
-            background: "#ffffffff",
-            color: "#000000ff",
-            borderRadius: "10px",
-            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.18)",
-            cursor: "pointer",
-            fontWeight: 600,
-            fontSize: "14px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            fontFamily: '"Poppins", sans-serif',
-          }}
-        >
-          {showTemporalPanel ? (
-            <i className="fa-solid fa-xmark"></i>
-          ) : (
-            <i className="fa-solid fa-calendar-days"></i>
-          )}
-
-        </button>
-      </div>
+      {/* 🛠️ Barra de ferramentas */}
+      <MapToolbar showLayersBtn={true} />
 
       {/* Painel temporal — posicionamento independente do botão */}
       {showTemporalPanel && (

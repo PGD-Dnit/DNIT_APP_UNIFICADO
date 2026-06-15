@@ -7,6 +7,9 @@ import Compass from "@arcgis/core/widgets/Compass";
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils";
 
 import TemporalLayersPanel from "./TemporalLayersPanel";
+import { useAppStore } from "../../core/store";
+import { buildPlanetTileUrl } from "../../core/mosaicUtils";
+import MapToolbar from "../../components/MapToolbar";
 
 import "./DualTileMapsViewer.css";
 import "./TileSwipeViewer.css";
@@ -42,6 +45,12 @@ export default function DualTileMapsViewer({
     const leftDivRef = useRef<HTMLDivElement>(null);
     const rightDivRef = useRef<HTMLDivElement>(null);
 
+    const setLastViewpoint = useAppStore((s) => s.setLastViewpoint);
+
+    // 🗓️ Painel temporal — estado no store para persistir entre trocas de modo
+    const showTemporalPanel = useAppStore((s) => s.showTemporalPanel);
+    const setShowTemporalPanel = useAppStore((s) => s.setShowTemporalPanel);
+
     const leftViewRef = useRef<MapView | null>(null);
     const rightViewRef = useRef<MapView | null>(null);
 
@@ -54,7 +63,7 @@ export default function DualTileMapsViewer({
     const onViewsReadyRef = useRef<typeof onViewsReady>(onViewsReady);
 
     // 🗓️ Estado de exibição do painel temporal
-    const [showTemporalPanel, setShowTemporalPanel] = useState(false);
+
     const [selectedSidePanel, setSelectedSidePanel] = useState<"left" | "right">("left");
 
     const [currentLeft, setCurrentLeft] = useState(leftTileUrl);
@@ -210,8 +219,18 @@ export default function DualTileMapsViewer({
                     }
                 );
 
+                const vpWatch = reactiveUtils.watch(
+                    () => leftView.viewpoint,
+                    (vp) => {
+                        if (vp) {
+                            setLastViewpoint(vp.clone());
+                        }
+                    }
+                );
+
                 cleanupHandlesRef.current.push(() => syncFromLeft.remove());
                 cleanupHandlesRef.current.push(() => syncFromRight.remove());
+                cleanupHandlesRef.current.push(() => vpWatch.remove());
 
                 onViewsReadyRef.current?.({
                     leftView,
@@ -317,7 +336,7 @@ export default function DualTileMapsViewer({
 
     const handleMosaicApply = (side: "left" | "right", mosaic: any) => {
         if (!mosaic?.id) return;
-        const nextUrl = `${window.location.origin}/consumeapi/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaic.id}`;
+        const nextUrl = buildPlanetTileUrl(mosaic.id);
 
         const raw = mosaic.date || mosaic.when || mosaic.label || "";
         const hit3 = String(raw).match(/(\d{4})[-_/\.](\d{2})[-_/\.](\d{2})/);
@@ -338,6 +357,8 @@ export default function DualTileMapsViewer({
             parsedMonth = parseInt(hit2[2], 10);
             parsedDay = new Date(parsedYear, parsedMonth, 0).getDate();
             newLabel = `${String(parsedDay).padStart(2, "0")}/${hit2[2]}/${hit2[1]}`;
+        } else {
+            newLabel = raw;
         }
 
         if (side === "left") {
@@ -381,38 +402,8 @@ export default function DualTileMapsViewer({
                 </div>
             </div>
 
-            {/* Botão para abrir/fechar o painel unificado — sempre visível */}
-            <div style={{ zIndex: 4000 }}>
-                <button
-                    title="Calendário com filtro"
-                    onClick={() => setShowTemporalPanel(prev => !prev)}
-                    style={{
-                        position: "absolute",
-                        top: "186px",
-                        left: "15px",
-                        width: "36px",
-                        height: "36px",
-                        background: "#ffffffff",
-                        color: "#000000ff",
-                        borderRadius: "10px",
-                        boxShadow: "0 4px 14px rgba(0, 0, 0, 0.18)",
-                        cursor: "pointer",
-                        fontWeight: 600,
-                        fontSize: "14px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontFamily: '"Poppins", sans-serif',
-                    }}
-                >
-                    {showTemporalPanel ? (
-                        <i className="fa-solid fa-xmark"></i>
-                    ) : (
-                        <i className="fa-solid fa-calendar-days"></i>
-                    )}
-
-                </button>
-            </div>
+            {/* 🛠️ Barra de ferramentas */}
+            <MapToolbar showLayersBtn={true} />
 
             {/* Painel temporal — posicionamento independente do botão */}
             {showTemporalPanel && (

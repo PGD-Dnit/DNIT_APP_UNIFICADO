@@ -34,6 +34,15 @@ export default function SideNav() {
             >
                 <i className="fa-solid fa-street-view" />
             </button>
+
+            {/* <button
+                className={`sidenav-btn ${activeMode === "mapa_inicial" ? "is-active" : ""}`}
+                onClick={() => setActiveMode("mapa_inicial")}
+                title="Mapa Inicial"
+                aria-label="Mapa Inicial"
+            >
+                <i className="fa-regular fa-map" />
+            </button> */}
         </aside>
     );
 }

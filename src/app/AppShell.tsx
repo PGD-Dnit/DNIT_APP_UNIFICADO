@@ -4,10 +4,11 @@ import { useAppStore } from "../core/store";
 
 import MapBase from "../modules/map/MapBase";
 
-//import SideNav from "./SideNav"; // ajuste path
+// import SideNav from "./SideNav"; // ajuste path
 
 // ajuste estes imports para os seus componentes reais:
 import SwipePage from "../modules/swipe/SwipePage";
+import SingleMapPage from "../modules/swipe/SingleMapPage";
 import AppInit from "../core/AppInit";
 
 import ErrorBoundary from "../core/ErrorBoundary";
@@ -20,6 +21,7 @@ export default function AppShell() {
   const inSwipe = activeMode === "swipe";
   const in360 = activeMode === "image360";
   const inImageObra = activeMode === "imageObra";
+  const inMapaInicial = activeMode === "mapa_inicial";
 
   return (
     <div style={styles.shell}>
@@ -48,7 +50,7 @@ export default function AppShell() {
         <MapBase />
 
         {/* ✅ menu lateral por cima do mapa */}
-        {/*<SideNav />*/}
+        {/* <SideNav /> */}
 
         {/* ✅ Overlay Swipe: só monta quando está em Swipe (serviço nasce/morre junto) */}
         {inSwipe && (
@@ -61,6 +63,20 @@ export default function AppShell() {
             }}
           >
             <SwipePage />
+          </div>
+        )}
+
+        {/* ✅ Overlay Mapa Inicial: mapa único sem swipe */}
+        {inMapaInicial && (
+          <div
+            style={{
+              ...styles.overlay,
+              pointerEvents: "auto",
+              opacity: 1,
+              transform: "translateX(0)",
+            }}
+          >
+            <SingleMapPage />
           </div>
         )}
 

@@ -6,7 +6,7 @@ import { listAttachments, buildAttachmentUrl } from "../../core/apiClient";
 import { MarkedCalendar } from "../../components/MarkedCalendar";
 import MiniMapImageView from "./MiniMapImageView";
 import SingleImageViewer from "./SingleImageViewer";
-import ImageToggleBtn from "./ImageToggleBtn";
+// import ImageToggleBtn from "./ImageToggleBtn";
 import ImageGallery, { type AttachmentItem } from "./ImageGallery";
 
 import "./SingleImageScreen.css";

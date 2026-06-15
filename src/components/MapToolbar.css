@@ -1,0 +1,227 @@
+/* =========================================================
+   MapToolbar.css
+   Barra de ferramentas flutuante sobre o mapa.
+   Dois grupos: Ferramentas (Calendário, Camadas) e
+   Visualização (Mapa Inicial, Swipe, 2 Mapas).
+   ========================================================= */
+
+.map-toolbar {
+  position: absolute;
+  top: 150px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  z-index: 4000;
+  pointer-events: auto;
+  /* ativa eventos no container */
+  background: #ffffff;
+  padding: 5px 5px 5px 5px;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* ── Grupos ── */
+.map-toolbar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Divisor visual entre grupos ── */
+.map-toolbar-divider {
+  align-self: stretch;
+  height: 1px;
+  margin: 6px 4px;
+  background: rgba(0, 0, 0, 0.295);
+  border-radius: 1px;
+}
+
+/* ── Botão base ── */
+.map-toolbar-btn {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  background: transparent;
+  color: #2d3748;
+  border: 2px solid transparent;
+  /* pre-aloca borda transparente para evitar shifts */
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Poppins", sans-serif;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+/* Pseudo-elemento para desenhar a borda ativa/focada por cima das imagens */
+.map-toolbar-btn::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 10;
+  transition: border-color 0.2s ease;
+}
+
+.map-toolbar-btn i {
+  font-size: 12px;
+}
+
+.map-toolbar-btn:hover {
+  background: #edf2f7;
+  color: #1a202c;
+  transform: scale(1.05);
+}
+
+.map-toolbar-btn:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
+/* ── Estado ativo (modo selecionado) ── */
+.map-toolbar-btn.active {
+  background: #ffffff;
+  color: #000000;
+}
+
+.map-toolbar-btn.active::after {
+  border-color: #d3af37;
+  border-width: 3px;
+}
+
+.map-toolbar-btn.active:hover {
+  background: #ffff;
+  transform: scale(1.02);
+}
+
+/* ── Custom SVG Icons ── */
+.map-toolbar-svg-icon {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.171);
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.map-toolbar-btn:hover .map-toolbar-svg-icon {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
+}
+
+/* Quando ativo em light mode, mantém a cor escura original do SVG */
+.map-toolbar-btn.active .map-toolbar-svg-icon {
+  filter: none;
+}
+
+/* ── Título dos Grupos (antigo <p>) ── */
+.map-toolbar-title {
+  color: #000000;
+  /* Cor escura elegante */
+  font-family: "Open Sans", sans-serif;
+  font-size: 10px;
+  /* Tamanho da fonte dos títulos */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-left: 2px solid rgba(0, 0, 0, 0.56);
+  padding-left: 4px;
+  margin: 0;
+  align-self: flex-start;
+  width: 100%;
+}
+
+/* ── Legendas dos Botões (antigo <span>) ── */
+.map-toolbar-label {
+  color: #4a5568;
+  /* Cinza escuro suave */
+  font-family: "Open Sans", sans-serif;
+  font-size: 12px;
+  /* Tamanho de fonte ideal para legendas compactas */
+  font-weight: 600;
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* ── Modo escuro ── */
+@media (prefers-color-scheme: dark) {
+  .map-toolbar {
+    background: rgba(22, 32, 50, 0.95);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  }
+
+  .map-toolbar-divider {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .map-toolbar-btn {
+    color: #cbd5e1;
+    background: transparent;
+  }
+
+  .map-toolbar-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+  }
+
+  .map-toolbar-btn.active {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+  }
+
+  .map-toolbar-btn.active::after {
+    border-color: #3b82f6;
+  }
+
+  .map-toolbar-btn.active:hover {
+    background: rgba(59, 130, 246, 0.25);
+  }
+
+  /* Filtros para SVG em modo escuro */
+  .map-toolbar-btn .map-toolbar-svg-icon {
+    filter: brightness(0) invert(0.85);
+    /* Fica cinza claro por padrão */
+  }
+
+  .map-toolbar-btn:hover .map-toolbar-svg-icon {
+    filter: brightness(0) invert(1);
+    /* Fica branco no hover */
+  }
+
+  .map-toolbar-btn.active .map-toolbar-svg-icon {
+    filter: brightness(0) invert(1);
+    /* Mantém branco quando ativo */
+  }
+
+  .map-toolbar-title {
+    color: #e2e8f0;
+    /* Texto claro no modo escuro */
+    border-left-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .map-toolbar-label {
+    color: #94a3b8;
+    /* Legenda em cinza claro no modo escuro */
+  }
+}

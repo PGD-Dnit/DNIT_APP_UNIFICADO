@@ -16,7 +16,7 @@ export type DateRange = {
     end: number | null;
 };
 
-type ActiveMode = "map" | "swipe" | "image360" | "imageObra";
+type ActiveMode = "map" | "swipe" | "image360" | "imageObra" | "mapa_inicial";
 
 /* =========================
    ✅ Planet (front model)
@@ -42,6 +42,20 @@ const capturedFromId = (id: string) => {
 type State = {
     activeMode: ActiveMode;
     setActiveMode: (m: ActiveMode) => void;
+
+    dualMode: boolean;
+    setDualMode: (d: boolean) => void;
+
+    /** Troca modo e dual atomicamente — evita dois re-renders */
+    setVisualizationMode: (mode: ActiveMode, dual: boolean) => void;
+
+    /** Visibilidade do painel Calendário — persiste entre trocas de modo */
+    showTemporalPanel: boolean;
+    setShowTemporalPanel: (v: boolean) => void;
+
+    /** Visibilidade do painel de Camadas — persiste entre trocas de modo */
+    showCamadas: boolean;
+    setShowCamadas: (v: boolean) => void;
 
     mapView: MapView | null;
     setMapView: (v: MapView | null) => void;
@@ -143,14 +157,31 @@ type State = {
     // mosaico ativo no MapBase (overlay)
     planetSelectedId: string | null;
     setPlanetSelectedId: (id: string | null) => void;
+
+    lastViewpoint: __esri.Viewpoint | null;
+    setLastViewpoint: (v: __esri.Viewpoint | null) => void;
 };
 
 export const useAppStore = create<State>((set, get) => ({
-    activeMode: "swipe",
+    activeMode: "mapa_inicial",
     setActiveMode: (m) => set({ activeMode: m }),
+
+    dualMode: false,
+    setDualMode: (d) => set({ dualMode: d }),
+
+    setVisualizationMode: (mode, dual) => set({ activeMode: mode, dualMode: dual }),
+
+    showTemporalPanel: false,
+    setShowTemporalPanel: (v) => set({ showTemporalPanel: v }),
+
+    showCamadas: false,
+    setShowCamadas: (v) => set({ showCamadas: v }),
 
     mapView: null,
     setMapView: (v) => set({ mapView: v }),
+
+    lastViewpoint: null,
+    setLastViewpoint: (v) => set({ lastViewpoint: v }),
 
     candidateExposures: [],
     setCandidateExposures: (arr) => set({ candidateExposures: arr }),
@@ -295,9 +326,18 @@ export const useAppStore = create<State>((set, get) => ({
                 planetSelectedId: items[0]?.id ?? null,
             });
         } catch (e) {
+            console.warn("Falha ao carregar mosaicos da Planet. Ativando fallback do Wayback:", e);
+            const fallbackItem: PlanetMosaicUI = {
+                id: "esri-wayback",
+                label: "Mosaico Único (Recente)",
+                tileUrl: "",
+                when: "Mosaico Único",
+            };
             set({
+                planetMosaics: [fallbackItem],
                 planetMosaicsLoading: false,
-                planetMosaicsError: e instanceof Error ? e.message : "Erro ao carregar mosaics",
+                planetMosaicsError: null, // Evita exibir tela de erro bloqueante
+                planetSelectedId: "esri-wayback",
             });
         }
     },

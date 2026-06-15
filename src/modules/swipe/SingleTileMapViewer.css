@@ -1,0 +1,57 @@
+/* ======================================
+   SingleTileMapViewer.css
+   Estilos exclusivos do mapa único
+   ====================================== */
+
+/* Badge flutuante com a data/label do mosaic */
+
+
+.single-map-badge {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 3px 6px;
+    background: color-mix(in srgb, var(--panel, #fff) 90%, transparent);
+    border: 1px solid var(--border, #ccc);
+    border-radius: 5px;
+    box-shadow: var(--shadow, 0 2px 6px rgba(0, 0, 0, 0.15));
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    cursor: default;
+}
+
+.single-map-badge-inner {
+    border: 1px solid rgb(213, 213, 220);
+    border-radius: 6px;
+    padding: 2px 5px;
+    display: flex;
+    align-items: center;
+}
+
+.single-map-badge-inner span {
+    font-weight: 500;
+    color: var(--text-strong, #111);
+    min-width: 60px;
+    text-align: center;
+}
+
+@media (prefers-color-scheme: dark) {
+    .single-map-badge {
+        background: color-mix(in srgb, var(--panel, #1e1e1e) 80%, transparent);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .single-map-badge-inner {
+        border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .single-map-badge-inner span {
+        color: #eee;
+    }
+}

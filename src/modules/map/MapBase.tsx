@@ -9,6 +9,7 @@ import Search from "@arcgis/core/widgets/Search";
 import Compass from "@arcgis/core/widgets/Compass";
 
 import { useAppStore } from "../../core/store";
+import { buildPlanetTileUrl } from "../../core/mosaicUtils";
 import { CONFIG } from "../../core/config";
 
 export default function MapBase() {
@@ -31,7 +32,7 @@ export default function MapBase() {
         if (!divRef.current) return;
         if (viewRef.current) return;
 
-        const map = new Map({ basemap: "hybrid" });
+        const map = new Map({ basemap: CONFIG.BASEMAP });
 
         const view = new MapView({
             container: divRef.current,
@@ -122,7 +123,7 @@ export default function MapBase() {
             planetLayerRef.current = null;
         }
 
-        const urlTemplate = `${CONFIG.API_BASE}/planet/tiles/{level}/{col}/{row}.png?mosaic=${planetSelectedId}`;
+        const urlTemplate = buildPlanetTileUrl(planetSelectedId);
 
         const layer = new WebTileLayer({
             urlTemplate,

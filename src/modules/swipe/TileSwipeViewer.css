@@ -22,6 +22,12 @@
   cursor: default;
 }
 
+.calendario-botao {
+  border: 1px solid rgb(213, 213, 220);
+  border-radius: 6px;
+  padding: 2px 5px;
+}
+
 /* 📍 Posicionamento distinto */
 .calendario-botao-esquerdo {
   left: 25%;
@@ -57,11 +63,7 @@
   text-align: center;
 }
 
-.calendario-botao {
-  border: 1px solid rgb(213, 213, 220);
-  border-radius: 6px;
-  padding: 2px 5px;
-}
+
 
 /* 🌙 Modo escuro opcional (se seu tema usa var(--panel) escuro) */
 @media (prefers-color-scheme: dark) {

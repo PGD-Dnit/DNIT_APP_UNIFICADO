@@ -20,7 +20,8 @@ export default function Map360View() {
   useEffect(() => {
     if (!divRef.current) return;
 
-    const layerUrl = CONFIG.IMAGENS360_LAYER_URL; // já com /0
+    //const layerUrl = CONFIG.IMAGENS360_LAYER_URL; // já com /0
+    const layerUrl = "https://sig.dnit.gov.br/server/rest/services/Hosted/Imagens360_clayton/FeatureServer/0";
     const map = new EsriMap({ basemap: CONFIG.BASEMAP as any });
 
     const exposureLayer = new FeatureLayer({

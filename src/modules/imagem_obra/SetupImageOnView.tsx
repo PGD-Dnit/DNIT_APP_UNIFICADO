@@ -137,7 +137,7 @@ export function SetupImageOnView(view: MapView) {
                     });
                     
                     const fieldName = fieldObj ? fieldObj.name : (layer.title?.toLowerCase().includes("obras") ? "data" : "acquisitionDate");
-                    const isStringField = fieldObj ? (fieldObj.type === "string" || fieldObj.type === "esriFieldTypeString") : false;
+                    const isStringField = fieldObj ? fieldObj.type === "string" : false;
 
                     let expr = "1=1";
                     if (filter.start || filter.end) {

@@ -183,8 +183,8 @@ body {
    =============================== */
 .camadas {
   position: absolute;
-  top: 90px;
-  left: 58px;
+  top: 150px;
+  left: 120px;
   width: 360px;
   max-width: calc(100vw - 90px);
   max-height: calc(100vh - 104px);
