@@ -206,14 +206,55 @@ export function SetupImageOnView(view: MapView) {
 
     handles.add(
         view.on("click", async (ev) => {
+            if (!ev.mapPoint) return;
+
+            // Só executa se o modo correspondente estiver ativo e a camada visível
+            const { activeMode, imageObraLayersVisible } = useAppStore.getState();
+            const isSupportedMode = activeMode === "imageObra" || activeMode === "swipe" || activeMode === "map" || activeMode === "mapa_inicial";
+            if (!isSupportedMode || !imageObraLayersVisible) return;
+
+            // ======== SÍNCRONO: Coordenar abertura de aba única ========
+            const globalWin = window as any;
+            const now = Date.now();
+            if (!globalWin.currentClickContext || now - globalWin.currentClickContext.time > 100) {
+                const msgId = makeMsgId();
+                const base = window.location.origin;
+                const url = `${base}/view-image?mid=${encodeURIComponent(msgId)}`;
+                const win = window.open(url, "_blank");
+
+                if (!win) {
+                    console.warn("[SetupImage] popup bloqueado pelo navegador.");
+                }
+
+                const { image360LayersVisible } = useAppStore.getState();
+                const active360 = (activeMode === "swipe" || activeMode === "map" || activeMode === "mapa_inicial") && image360LayersVisible;
+
+                globalWin.currentClickContext = {
+                    time: now,
+                    win,
+                    msgId,
+                    base,
+                    type: "obra",
+                    need360: active360,
+                    needObra: true,
+                    checked360: false,
+                    checkedObra: false,
+                    hit360: false,
+                    hitObra: false,
+                };
+            }
+
+            const ctx = globalWin.currentClickContext;
+            const win = ctx.win;
+            const msgId = ctx.msgId;
+            const base = ctx.base;
+
             const {
                 setLastClickedPoint,
                 setCandidateImages,
                 setSelectedImageLeft,
                 setSelectedImageRight,
             } = useAppStore.getState();
-
-            if (!ev.mapPoint) return;
 
             const lastClickedPoint = {
                 x: ev.mapPoint.x,
@@ -222,8 +263,67 @@ export function SetupImageOnView(view: MapView) {
             };
             setLastClickedPoint(lastClickedPoint);
 
+            // Helper para enviar payload com retry
+            const sendPayload = (payload: any) => {
+                if (!win) return;
+                const targetOrigin = base;
+                const MAX_MS = 15_000;   // 15s — cobre dev build lento
+                const INTERVAL_MS = 200; // 200ms entre tentativas
+                const maxAttempts = MAX_MS / INTERVAL_MS;
+                let attempts = 0;
+
+                const ackType = payload.__type === "DNIT_COMPARE_INIT" ? "DNIT_COMPARE_ACK" : "DNIT_IMAGE_COMPARE_ACK";
+
+                const ackHandler = (e: MessageEvent) => {
+                    if (e.origin !== targetOrigin) return;
+                    const data: any = e.data;
+                    if (data?.__type === ackType && data?.msgId === msgId) {
+                        window.clearInterval(timer);
+                        window.removeEventListener("message", ackHandler);
+                    }
+                };
+                window.addEventListener("message", ackHandler);
+
+                const timer = window.setInterval(() => {
+                    attempts++;
+                    try {
+                        win.postMessage(payload, targetOrigin);
+                    } catch { }
+                    if (attempts >= maxAttempts) {
+                        window.clearInterval(timer);
+                        window.removeEventListener("message", ackHandler);
+                    }
+                }, INTERVAL_MS);
+            };
+
+            const finalize = (hasHit: boolean) => {
+                ctx.checkedObra = true;
+                ctx.hitObra = hasHit;
+
+                const done360 = !ctx.need360 || ctx.checked360;
+                const doneObra = !ctx.needObra || ctx.checkedObra;
+
+                if (done360 && doneObra) {
+                    const totalHits = ctx.hit360 || ctx.hitObra;
+                    if (!totalHits) {
+                        const emptyType = ctx.type === "360" ? "DNIT_COMPARE_INIT" : "DNIT_IMAGE_COMPARE_INIT";
+                        sendPayload({
+                            __type: emptyType,
+                            msgId,
+                            lastClickedPoint,
+                            candidates: [],
+                            left: null,
+                            right: null,
+                        });
+                    }
+                }
+            };
+
             await ensureLayersLoaded();
-            if (!imgLayers.length) return;
+            if (disposed || !imgLayers.length) {
+                finalize(false);
+                return;
+            }
 
             // ── Passo 1: hitTest para confirmar presença de feature no ponto ──
             const hit = await view.hitTest(ev, { include: imgLayers });
@@ -236,19 +336,18 @@ export function SetupImageOnView(view: MapView) {
                 // Notifica a UI do mapa que não há imagem neste ponto
                 useAppStore.getState().setImageObraMapMsg("Nenhuma imagem de obra encontrada neste ponto");
                 setTimeout(() => useAppStore.getState().setImageObraMapMsg(null), 3500);
+
+                finalize(false);
                 return;
             }
 
             // ── Passo 2: queryFeatures espacial nas layers com hit ──
-            // hitTest só retorna features RENDERIZADOS na viewport (limitado).
-            // queryFeatures retorna TODOS os features no ponto, independente de render.
             const hitLayerIds = new Set(hitGraphics.map((g) => (g.layer as any).id as string));
             const hitLayers = imgLayers.filter((l) => hitLayerIds.has(l.id));
 
             const uniq = await queryExposuresAtPoint(hitLayers, ev.mapPoint);
 
-            // Fallback: se queryFeatures falhou (ex: serviço sem suporte a query)
-            // usa os resultados do hitTest para garantir ao menos algum candidato
+            // Fallback: se queryFeatures falhou
             if (uniq.size === 0) {
                 console.warn("[SetupImage] queryFeatures retornou vazio — usando fallback do hitTest");
                 const fallback = hitGraphics;
@@ -271,71 +370,29 @@ export function SetupImageOnView(view: MapView) {
 
             const candidates = sortCandidatesDesc(Array.from(uniq.values()));
 
-            console.log(
-                `[SetupImage] candidates (${candidates.length}):`,
-                candidates.map((c) => ({
-                    objectId: c.objectId,
-                    layerUrl: c.layerUrl,
-                    title: c.title,
-                    acquisitionDate: c.acquisitionDate
-                        ? new Date(c.acquisitionDate).toISOString()
-                        : null,
-                }))
-            );
-
             setCandidateImages(candidates);
 
             const first = candidates[0] ?? null;
             setSelectedImageLeft(first);
             setSelectedImageRight(first);
 
-            // ======== NOVA ABA ========
-            const msgId = makeMsgId();
-            const base = window.location.origin;
-
-            const url = `${base}/view-image?mid=${encodeURIComponent(msgId)}`;
-            const win = window.open(url, "_blank");
-
-            if (!win) {
-                console.warn("[SetupImage] popup bloqueado pelo navegador.");
-                return;
+            // Redireciona a janela caso o tipo não seja o correto
+            if (ctx.type !== "obra") {
+                ctx.type = "obra";
+                if (win) win.location.href = `${base}/view-image?mid=${encodeURIComponent(msgId)}`;
             }
 
-            const payload = {
+            // Envia o payload completo
+            sendPayload({
                 __type: "DNIT_IMAGE_COMPARE_INIT",
                 msgId,
                 lastClickedPoint,
                 candidates,
                 left: first,
                 right: first,
-            };
+            });
 
-            const targetOrigin = base;
-            const MAX_MS = 15_000;   // 15s — cobre dev build lento
-            const INTERVAL_MS = 200; // 200ms entre tentativas
-            const maxAttempts = MAX_MS / INTERVAL_MS; // 75 tentativas
-            let attempts = 0;
-
-            const ackHandler = (e: MessageEvent) => {
-                if (e.origin !== targetOrigin) return;
-                const data: any = e.data;
-                if (data?.__type === "DNIT_IMAGE_COMPARE_ACK" && data?.msgId === msgId) {
-                    window.clearInterval(timer);
-                    window.removeEventListener("message", ackHandler); // cleanup no sucesso
-                }
-            };
-            window.addEventListener("message", ackHandler);
-
-            const timer = window.setInterval(() => {
-                attempts++;
-                try {
-                    win.postMessage(payload, targetOrigin);
-                } catch { }
-                if (attempts >= maxAttempts) {
-                    window.clearInterval(timer);
-                    window.removeEventListener("message", ackHandler); // cleanup no timeout
-                }
-            }, INTERVAL_MS);
+            finalize(true);
         })
     );
 

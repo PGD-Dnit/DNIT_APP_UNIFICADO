@@ -18,7 +18,7 @@ export default function AppInit() {
 
   useEffect(() => {
     if (!view) return;
-    if (activeMode !== "image360" && activeMode !== "imageObra") return;
+    if (activeMode !== "image360" && activeMode !== "imageObra" && activeMode !== "map") return;
 
     let cancelled = false;
     let cleanup360: void | (() => void);
@@ -26,8 +26,8 @@ export default function AppInit() {
 
     view.when().then(() => {
       if (cancelled) return;
-      if (activeMode === "image360") cleanup360 = Setup360OnView(view);
-      if (activeMode === "imageObra") cleanupImage = SetupImageOnView(view);
+      if (activeMode === "image360" || activeMode === "map") cleanup360 = Setup360OnView(view);
+      if (activeMode === "imageObra" || activeMode === "map") cleanupImage = SetupImageOnView(view);
     }).catch((err) => {
       console.error("view.when() falhou no AppInit:", err);
     });
@@ -52,8 +52,8 @@ export default function AppInit() {
     );
   }
 
-  // Toast de "sem imagem" no mapa principal (modo imageObra)
-  if (activeMode === "imageObra" && imageObraMapMsg) {
+  // Toast de "sem imagem" no mapa principal (modo imageObra ou map)
+  if ((activeMode === "imageObra" || activeMode === "map") && imageObraMapMsg) {
     return (
       <div style={styles.root}>
         <div style={styles.toast}>

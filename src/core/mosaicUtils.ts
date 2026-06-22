@@ -54,7 +54,7 @@ export function buildWaybackTileUrl(): string {
 export function buildMosaicTileUrl(provider: MosaicProvider, id: string): string {
   switch (provider) {
     case "wayback":
-      return buildWaybackTileUrl(id);
+      return buildWaybackTileUrl();
     case "planet":
     default:
       return buildPlanetTileUrl(id);

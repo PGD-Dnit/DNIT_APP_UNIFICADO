@@ -49,15 +49,54 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.sps__empty__card {
+    display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 10px;
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 15px;
+    background: rgba(255, 255, 255, 0.91);
+    border: 1px solid rgba(220, 225, 230, 0.18);
+    border-radius: 16px;
+    padding: 32px 48px;
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 14px;
+    backdrop-filter: blur(4px);
+    max-width: 360px;
+    text-align: center;
 }
 
 .sps__empty__icon {
     font-size: 36px;
     opacity: 0.3;
+}
+
+.sps__empty__sub {
+    font-size: 12px;
+    opacity: 0.5;
+    margin-top: 2px;
+}
+
+.sps__close-btn {
+    margin-top: 14px;
+    padding: 8px 20px;
+    background: #0056b3;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.sps__close-btn:hover {
+    background: #004085;
+}
+
+.sps__close-btn:active {
+    transform: scale(0.97);
 }
 
 /* Info de Orientação — canto superior direito */

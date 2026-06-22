@@ -384,7 +384,7 @@ export default function DualTileMapsViewer({
                 <div ref={leftDivRef} className="dual-map" />
 
                 {/* Botão Badge Esquerdo */}
-                <div className="calendario-botao-esquerdo" style={{ left: "50%" }}>
+                <div className="calendario-botao-esquerdo" title="Data do Mosaico" style={{ left: "50%" }}>
                     <div className="calendario-botao">
                         <span>{labelLeft}</span>
                     </div>
@@ -395,7 +395,7 @@ export default function DualTileMapsViewer({
                 <div ref={rightDivRef} className="dual-map" />
 
                 {/* Botão Badge Direito */}
-                <div className="calendario-botao-direito" style={{ left: "50%" }}>
+                <div className="calendario-botao-direito" title="Data do Mosaico" style={{ left: "50%" }}>
                     <div className="calendario-botao">
                         <span>{labelRight}</span>
                     </div>

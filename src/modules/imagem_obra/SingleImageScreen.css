@@ -79,3 +79,24 @@
     opacity: 0.5;
     margin-top: 2px;
 }
+
+.sis__close-btn {
+    margin-top: 14px;
+    padding: 8px 20px;
+    background: #0056b3;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.sis__close-btn:hover {
+    background: #004085;
+}
+
+.sis__close-btn:active {
+    transform: scale(0.97);
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import "./MarkedCalendar.css";
 
 function ymd(d: Date) {
@@ -21,6 +21,7 @@ export function MarkedCalendar({
     onPick: (d: Date) => void;
     selectedDate?: Date | null;
 }) {
+    const [prevMarkedDates, setPrevMarkedDates] = useState(markedDates);
     const [cursor, setCursor] = useState(() => {
         const sorted = [...markedDates]
             .filter(Boolean)
@@ -29,13 +30,16 @@ export function MarkedCalendar({
         return sorted[0] ?? new Date();
     });
 
-    useEffect(() => {
+    if (markedDates !== prevMarkedDates) {
+        setPrevMarkedDates(markedDates);
         const sorted = [...markedDates]
             .filter(Boolean)
             .map(normalizeDay)
             .sort((a, b) => b.getTime() - a.getTime());
-        if (sorted[0]) setCursor(sorted[0]);
-    }, [markedDates]);
+        if (sorted[0]) {
+            setCursor(sorted[0]);
+        }
+    }
 
     const markedSet = useMemo(() => {
         const s = new Set<string>();

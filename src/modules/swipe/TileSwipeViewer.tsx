@@ -220,14 +220,14 @@ export default function TileSwipeViewer({
       <div ref={mapDiv} style={{ width: "100%", height: "100%" }} />
 
       {/* 📍 Label esquerdo (Badge) */}
-      <div className="calendario-botao-esquerdo">
+      <div className="calendario-botao-esquerdo" title="Data do Mosaico">
         <div className="calendario-botao">
           <span>{labelLeft}</span>
         </div>
       </div>
 
       {/* 📍 Label direito (Badge) */}
-      <div className="calendario-botao-direito">
+      <div className="calendario-botao-direito" title="Data do Mosaico">
         <div className="calendario-botao">
           <span>{labelRight}</span>
         </div>

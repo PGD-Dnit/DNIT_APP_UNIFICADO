@@ -7,10 +7,10 @@ const SESSION_KEY_PREFIX = "dnit_img_payload:";
 
 function hydrateStore(data: any) {
     const store = useAppStore.getState();
-    if (data.lastClickedPoint) store.setLastClickedPoint(data.lastClickedPoint);
-    if (Array.isArray(data.candidates)) store.setCandidateImages(data.candidates);
-    if (data.left) store.setSelectedImageLeft(data.left);
-    if (data.right) store.setSelectedImageRight(data.right);
+    store.setLastClickedPoint(data.lastClickedPoint ?? null);
+    store.setCandidateImages(data.candidates ?? []);
+    store.setSelectedImageLeft(data.left ?? null);
+    store.setSelectedImageRight(data.right ?? null);
 }
 
 export default function SingleImagePage() {

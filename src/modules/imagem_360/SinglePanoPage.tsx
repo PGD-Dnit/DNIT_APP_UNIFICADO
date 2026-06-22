@@ -9,10 +9,10 @@ const SESSION_KEY_PREFIX = "dnit_360_payload:";
 
 function hydrateStore(data: any) {
     const store = useAppStore.getState();
-    if (data.lastClickedPoint) store.setLastClickedPoint(data.lastClickedPoint);
-    if (Array.isArray(data.candidates)) store.setCandidateExposures(data.candidates);
-    if (data.left) store.setSelectedExposureLeft(data.left);
-    if (data.right) store.setSelectedExposureRight(data.right);
+    store.setLastClickedPoint(data.lastClickedPoint ?? null);
+    store.setCandidateExposures(data.candidates ?? []);
+    store.setSelectedExposureLeft(data.left ?? null);
+    store.setSelectedExposureRight(data.right ?? null);
 }
 
 export default function SinglePanoPage() {

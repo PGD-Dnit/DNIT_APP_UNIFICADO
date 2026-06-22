@@ -10,6 +10,13 @@ export default function ZoomViewer({ url }: Props) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [prevUrl, setPrevUrl] = useState(url);
+
+  if (url !== prevUrl) {
+    setPrevUrl(url);
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  }
 
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault();
@@ -51,11 +58,7 @@ export default function ZoomViewer({ url }: Props) {
     e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  // Reset when URL changes
-  useEffect(() => {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
-  }, [url]);
+
 
   return (
     <div

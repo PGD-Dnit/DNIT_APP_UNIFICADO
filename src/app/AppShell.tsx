@@ -80,8 +80,8 @@ export default function AppShell() {
           </div>
         )}
 
-        {/* ✅ Overlay 360 / Imagem Obra */}
-        {(in360 || inImageObra) && (
+        {/* ✅ Overlay 360 / Imagem Obra / Mapa */}
+        {(in360 || inImageObra || activeMode === "map") && (
           <div
             style={{
               ...styles.overlay,

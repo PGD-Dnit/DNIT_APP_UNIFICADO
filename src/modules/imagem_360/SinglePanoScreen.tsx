@@ -2,7 +2,7 @@
 // Tela de visualização de UMA imagem 360.
 // Exibe o viewer, calendário de datas disponíveis e botão "Comparar"
 // que navega para /compare na mesma aba.
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../../core/store";
 import { listAttachments, buildAttachmentUrl } from "../../core/apiClient";
@@ -36,25 +36,40 @@ function sameDay(a: Date, b: Date) {
 
 export default function SinglePanoScreen() {
   const candidateExposures = useAppStore((s) => s.candidateExposures);
+  const lastClickedPoint = useAppStore((s) => s.lastClickedPoint);
   const leftExp = useAppStore((s) => s.selectedExposureLeft);
   const setLeftExp = useAppStore((s) => s.setSelectedExposureLeft);
 
   const panoLeft = useAppStore((s) => s.panoLeft);
   const setPanoLeft = useAppStore((s) => s.setPanoLeft);
 
+  const [status, setStatus] = useState<"waiting" | "loading" | "empty" | "ready">("waiting");
+
   // Carrega o attachment quando a exposição esquerda muda
   useEffect(() => {
+    if (!leftExp) {
+      setPanoLeft(null);
+      setStatus(lastClickedPoint && candidateExposures.length === 0 ? "empty" : "waiting");
+      return;
+    }
+
+    let cancelled = false;
+    setStatus("loading");
+
     (async () => {
-      if (!leftExp) {
-        setPanoLeft(null);
-        return;
-      }
       try {
         const list = await listAttachments(leftExp.layerUrl, leftExp.objectId);
+        if (cancelled) return;
         const best = pickBest(list);
-        if (!best) { setPanoLeft(null); return; }
+        if (!best) {
+          setPanoLeft(null);
+          setStatus("empty");
+          return;
+        }
 
         const url = buildAttachmentUrl(leftExp.layerUrl, leftExp.objectId, best.id);
+        if (cancelled) return;
+
         setPanoLeft({
           objectId: leftExp.objectId,
           attachmentId: best.id,
@@ -66,11 +81,16 @@ export default function SinglePanoScreen() {
           cameraRoll: leftExp.attrs?.cameraroll ?? leftExp.attrs?.cameraRoll ?? undefined,
           vfov: leftExp.attrs?.verticalfieldofview ?? leftExp.attrs?.vfov ?? undefined,
         });
+        setStatus("ready");
       } catch {
-        setPanoLeft(null);
+        if (!cancelled) {
+          setPanoLeft(null);
+          setStatus("empty");
+        }
       }
     })();
-  }, [leftExp?.layerUrl, leftExp?.objectId, leftExp, setPanoLeft]);
+    return () => { cancelled = true; };
+  }, [leftExp?.layerUrl, leftExp?.objectId, leftExp, setPanoLeft, lastClickedPoint, candidateExposures.length]);
 
   // Datas marcadas no calendário (uma por candidato)
   const markedDates = useMemo(() => {
@@ -99,23 +119,56 @@ export default function SinglePanoScreen() {
   };
 
 
-  return (
-    <div className="sps">
-      {/* Viewer 360 ocupa todo o fundo */}
-      <div className="sps__viewer">
-        {panoLeft?.url ? (
+  function renderViewer() {
+    switch (status) {
+      case "waiting":
+        return (
+          <div className="sps__empty">
+            <div className="sps__empty__card">
+              <i className="fa-solid fa-map-location-dot sps__empty__icon" />
+              <span>Clique em um ponto do mapa para visualizar a imagem 360</span>
+            </div>
+          </div>
+        );
+      case "loading":
+        return (
+          <div className="sps__empty">
+            <div className="sps__empty__card">
+              <i className="fa-solid fa-circle-notch fa-spin sps__empty__icon" />
+              <span>Carregando imagem 360…</span>
+            </div>
+          </div>
+        );
+      case "empty":
+        return (
+          <div className="sps__empty">
+            <div className="sps__empty__card">
+              <i className="fa-solid fa-image-slash sps__empty__icon" />
+              <span>Nenhuma imagem disponível para este ponto</span>
+              <span className="sps__empty__sub">Tente selecionar outro ponto no mini-mapa</span>
+              <button className="sps__close-btn" onClick={() => window.close()}>
+                Fechar aba
+              </button>
+            </div>
+          </div>
+        );
+      case "ready":
+        return panoLeft?.url ? (
           <SinglePanoViewer
             url={panoLeft.url}
             heading={panoLeft.cameraHeading ?? null}
             pitch={panoLeft.cameraPitch ?? null}
             vfov={panoLeft.vfov ?? null}
           />
-        ) : (
-          <div className="sps__empty">
-            <i className="fa-solid fa-circle-notch fa-spin sps__empty__icon" />
-            <span>Carregando imagem 360…</span>
-          </div>
-        )}
+        ) : null;
+    }
+  }
+
+  return (
+    <div className="sps">
+      {/* Viewer 360 ocupa todo o fundo */}
+      <div className="sps__viewer">
+        {renderViewer()}
       </div>
 
       {/* Calendário — canto superior esquerdo */}

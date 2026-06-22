@@ -33,42 +33,82 @@ function sameDay(a: Date, b: Date) {
 }
 
 /** Hook interno que carrega todos os attachments de um ExposureRef */
+interface AttachmentState {
+    status: ImgStatus;
+    url: string | null;
+    attachments: AttachmentItem[];
+    selectedAttId: number | null;
+}
+
 function useAllAttachments(
     exp: ExposureRef | null,
     setStoreImg: (p: any) => void
 ) {
-    const [status, setStatus] = useState<ImgStatus>("waiting");
-    const [url, setUrl] = useState<string | null>(null);
-    const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
-    const [selectedAttId, setSelectedAttId] = useState<number | null>(null);
+    const [state, setState] = useState<AttachmentState>({
+        status: "waiting",
+        url: null,
+        attachments: [],
+        selectedAttId: null,
+    });
 
     useEffect(() => {
         if (!exp) {
-            setStatus("waiting"); setUrl(null); setAttachments([]); setSelectedAttId(null); setStoreImg(null);
+            setState({
+                status: "waiting",
+                url: null,
+                attachments: [],
+                selectedAttId: null,
+            });
+            setStoreImg(null);
             return;
         }
         let cancelled = false;
-        setStatus("loading"); setUrl(null); setAttachments([]); setSelectedAttId(null); setStoreImg(null);
+        setState({
+            status: "loading",
+            url: null,
+            attachments: [],
+            selectedAttId: null,
+        });
+        setStoreImg(null);
 
         (async () => {
             try {
                 const list = await listAttachments(exp.layerUrl, exp.objectId);
                 if (cancelled) return;
                 const sorted = filterImages(list);
-                if (!sorted.length) { setStatus("empty"); return; }
+                if (!sorted.length) {
+                    setState({
+                        status: "empty",
+                        url: null,
+                        attachments: [],
+                        selectedAttId: null,
+                    });
+                    return;
+                }
 
                 const items: AttachmentItem[] = sorted.map((a) => ({
                     id: a.id, name: a.name, contentType: a.contentType, size: a.size,
                     url: buildAttachmentUrl(exp.layerUrl, exp.objectId, a.id),
                 }));
 
-                setAttachments(items);
                 const first = items[0];
-                setSelectedAttId(first.id);
-                setUrl(first.url);
-                setStatus("ready");
+                setState({
+                    status: "ready",
+                    url: first.url,
+                    attachments: items,
+                    selectedAttId: first.id,
+                });
                 setStoreImg({ objectId: exp.objectId, attachmentId: first.id, url: first.url, name: first.name, contentType: first.contentType });
-            } catch { if (!cancelled) setStatus("empty"); }
+            } catch {
+                if (!cancelled) {
+                    setState({
+                        status: "empty",
+                        url: null,
+                        attachments: [],
+                        selectedAttId: null,
+                    });
+                }
+            }
         })();
 
         return () => { cancelled = true; };
@@ -77,12 +117,21 @@ function useAllAttachments(
 
     const select = (att: AttachmentItem, exp2: typeof exp) => {
         if (!exp2) return;
-        setSelectedAttId(att.id);
-        setUrl(att.url);
+        setState((prev) => ({
+            ...prev,
+            selectedAttId: att.id,
+            url: att.url,
+        }));
         setStoreImg({ objectId: exp2.objectId, attachmentId: att.id, url: att.url, name: att.name, contentType: att.contentType });
     };
 
-    return { status, url, attachments, selectedAttId, select };
+    return {
+        status: state.status,
+        url: state.url,
+        attachments: state.attachments,
+        selectedAttId: state.selectedAttId,
+        select,
+    };
 }
 
 export default function CompareImageScreen() {

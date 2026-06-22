@@ -180,7 +180,7 @@ export default function SingleTileMapViewer({
             <div ref={mapDiv} style={{ width: "100%", height: "100%" }} />
 
             {/* Badge da data do mosaic */}
-            <div className="single-map-badge">
+            <div className="single-map-badge" title="Data do Mosaico">
                 <div className="single-map-badge-inner">
                     <span>{label}</span>
                 </div>

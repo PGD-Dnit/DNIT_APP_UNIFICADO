@@ -33,13 +33,18 @@ function sameDay(a: Date, b: Date) {
     );
 }
 
-function EmptyState({ icon, msg, sub }: { icon: string; msg: string; sub?: string }) {
+function EmptyState({ icon, msg, sub, showCloseBtn }: { icon: string; msg: string; sub?: string; showCloseBtn?: boolean }) {
     return (
         <div className="sis__empty">
             <div className="sis__empty__card">
                 <i className={`fa-solid ${icon} sis__empty__icon`} />
                 <span>{msg}</span>
                 {sub && <span className="sis__empty__sub">{sub}</span>}
+                {showCloseBtn && (
+                    <button className="sis__close-btn" onClick={() => window.close()}>
+                        Fechar aba
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -47,33 +52,47 @@ function EmptyState({ icon, msg, sub }: { icon: string; msg: string; sub?: strin
 
 export default function SingleImageScreen() {
     const candidateImages = useAppStore((s) => s.candidateImages);
+    const lastClickedPoint = useAppStore((s) => s.lastClickedPoint);
     const leftExp = useAppStore((s) => s.selectedImageLeft);
     const setLeftExp = useAppStore((s) => s.setSelectedImageLeft);
     const setImageLeft = useAppStore((s) => s.setImageLeft);
 
-    const [imgStatus, setImgStatus] = useState<ImgStatus>("waiting");
-    const [imgUrl, setImgUrl] = useState<string | null>(null);
+    interface ImageState {
+        status: ImgStatus;
+        url: string | null;
+        attachments: AttachmentItem[];
+        selectedAttId: number | null;
+    }
 
-    // Lista de todos os attachments do feature selecionado
-    const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
-    const [selectedAttId, setSelectedAttId] = useState<number | null>(null);
+    const [imageState, setImageState] = useState<ImageState>({
+        status: "waiting",
+        url: null,
+        attachments: [],
+        selectedAttId: null,
+    });
+
+    const { status: imgStatus, url: imgUrl, attachments, selectedAttId } = imageState;
 
     // Carrega TODOS os attachments quando o feature (ExposureRef) muda
     useEffect(() => {
         if (!leftExp) {
-            setImgStatus("waiting");
-            setImgUrl(null);
-            setAttachments([]);
-            setSelectedAttId(null);
+            setImageState({
+                status: (lastClickedPoint && candidateImages.length === 0) ? "empty" : "waiting",
+                url: null,
+                attachments: [],
+                selectedAttId: null,
+            });
             setImageLeft(null);
             return;
         }
 
         let cancelled = false;
-        setImgStatus("loading");
-        setImgUrl(null);
-        setAttachments([]);
-        setSelectedAttId(null);
+        setImageState({
+            status: "loading",
+            url: null,
+            attachments: [],
+            selectedAttId: null,
+        });
         setImageLeft(null);
 
         (async () => {
@@ -83,7 +102,12 @@ export default function SingleImageScreen() {
 
                 const sorted = filterImages(list);
                 if (!sorted.length) {
-                    setImgStatus("empty");
+                    setImageState({
+                        status: "empty",
+                        url: null,
+                        attachments: [],
+                        selectedAttId: null,
+                    });
                     return;
                 }
 
@@ -96,13 +120,14 @@ export default function SingleImageScreen() {
                     url: buildAttachmentUrl(leftExp.layerUrl, leftExp.objectId, a.id),
                 }));
 
-                setAttachments(items);
-
                 // Seleciona o primeiro automaticamente
                 const first = items[0];
-                setSelectedAttId(first.id);
-                setImgUrl(first.url);
-                setImgStatus("ready");
+                setImageState({
+                    status: "ready",
+                    url: first.url,
+                    attachments: items,
+                    selectedAttId: first.id,
+                });
                 setImageLeft({
                     objectId: leftExp.objectId,
                     attachmentId: first.id,
@@ -111,18 +136,28 @@ export default function SingleImageScreen() {
                     contentType: first.contentType ?? undefined,
                 });
             } catch {
-                if (!cancelled) setImgStatus("empty");
+                if (!cancelled) {
+                    setImageState({
+                        status: "empty",
+                        url: null,
+                        attachments: [],
+                        selectedAttId: null,
+                    });
+                }
             }
         })();
 
         return () => { cancelled = true; };
-    }, [leftExp?.layerUrl, leftExp?.objectId, leftExp, setImageLeft]);
+    }, [leftExp?.layerUrl, leftExp?.objectId, leftExp, setImageLeft, lastClickedPoint, candidateImages.length]);
 
     // Clique na galeria → troca o attachment exibido
     const handleGallerySelect = (att: AttachmentItem) => {
         if (!leftExp) return;
-        setSelectedAttId(att.id);
-        setImgUrl(att.url);
+        setImageState((prev) => ({
+            ...prev,
+            selectedAttId: att.id,
+            url: att.url,
+        }));
         setImageLeft({
             objectId: leftExp.objectId,
             attachmentId: att.id,
@@ -170,6 +205,7 @@ export default function SingleImageScreen() {
                         icon="fa-image-slash"
                         msg="Nenhuma imagem disponível para este ponto"
                         sub="Tente selecionar outro ponto no mini-mapa"
+                        showCloseBtn={true}
                     />
                 );
             case "ready":
