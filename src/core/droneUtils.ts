@@ -14,6 +14,8 @@ export type ExtentBox = {
     xmax: number;
     ymax: number;
     wkid?: number;
+    /** WKT da spatialReference — presente quando o serviço não fornece wkid numérico (ex: UTM SIRGAS WKT) */
+    wkt?: string | null;
 };
 
 export type CenterPoint = {
@@ -129,6 +131,7 @@ export const parseDatePartsToDayKey = (
  *   Ponte_Autaz_Mirim_03_03_26_tif
  *   Ponte_autaz_mirim_20_02_2026_tif
  *   drone_formosa_02_09_2025
+ *   Drone_Formosa_13_07_2026_50cm   ← sufixo de resolução é removido antes do parse
  */
 export const parseDroneServiceName = (serviceName: string) => {
     const cleaned = serviceName
@@ -136,7 +139,9 @@ export const parseDroneServiceName = (serviceName: string) => {
         .replace(/\/+$/, "")
         .replace(/\.(tif|tiff)$/i, "")
         .replace(/_tif$/i, "")
-        .replace(/-tif$/i, "");
+        .replace(/-tif$/i, "")
+        // Remove sufixos de resolução como _50cm, _30cm, _1m, _10m, etc.
+        .replace(/_\d+(?:cm|m)$/i, "");
 
     const regex = /^(.*?)[_-](\d{2})[_-](\d{2})[_-](\d{2}|\d{4})$/i;
     const match = cleaned.match(regex);
@@ -192,7 +197,15 @@ export const parseExtent = (raw: any): ExtentBox | null => {
         safeNum(raw?.wkid) ??
         undefined;
 
-    return { xmin, ymin, xmax, ymax, wkid };
+    // Extrai WKT como fallback para SRs que não fornecem wkid numérico (ex: SIRGAS UTM via WKT)
+    // Prefere wkt (WKT1) sobre wkt2 (WKT2) pela compatibilidade mais ampla com o ArcGIS
+    const sr = raw?.spatialReference;
+    const wkt: string | null =
+        (typeof sr?.wkt === "string" && sr.wkt ? sr.wkt :
+         typeof sr?.wkt2 === "string" && sr.wkt2 ? sr.wkt2 :
+         null);
+
+    return { xmin, ymin, xmax, ymax, wkid, wkt };
 };
 
 export const getExtentCenter = (extent: ExtentBox | null | undefined): CenterPoint | null => {
@@ -362,3 +375,62 @@ export const groupDroneImages = (items: MapImageItem[]): DroneGroup[] => {
 
     return groups.sort((a, b) => (b.latestItem?.sourceDateMs ?? 0) - (a.latestItem?.sourceDateMs ?? 0));
 };
+
+// ─────────────────────────────────────────────────────────────
+// Auto-seleção de grupo pela posição do mapa
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Dado o extent atual da MapView (todos os grupos já reprojetados para o mesmo
+ * SR da view pelo hook useDroneGroupAutoSelect), retorna o DroneGroup com maior
+ * sobreposição percentual com a área visível.
+ *
+ * Fallback: se nenhum grupo intersecta a view, retorna o de centro mais próximo.
+ * Retorna null se a lista estiver vazia ou nenhum extent for válido.
+ */
+export const findBestDroneGroupForExtent = (
+    viewExtent: ExtentBox,
+    groups: DroneGroup[]
+): DroneGroup | null => {
+    if (!groups.length) return null;
+
+    let bestByOverlap: DroneGroup | null = null;
+    let bestOverlapScore = 0;
+
+    for (const group of groups) {
+        const extent = group.representativeExtent;
+        if (!extent) continue;
+
+        // Se ainda houver grupos com wkid diferente (não reprojetados), ignorar
+        if (
+            viewExtent.wkid != null &&
+            extent.wkid != null &&
+            viewExtent.wkid !== extent.wkid
+        ) continue;
+
+        const pct = getIntersectionPctOnSmaller(viewExtent, extent);
+        if (pct > bestOverlapScore) {
+            bestOverlapScore = pct;
+            bestByOverlap = group;
+        }
+    }
+
+    // Alguma interseção encontrada → retorna o melhor
+    if (bestByOverlap && bestOverlapScore > 0) return bestByOverlap;
+
+    // Fallback: grupo com centro mais próximo do centro da view
+    const viewCenter = getExtentCenter(viewExtent);
+    let bestByDist: DroneGroup | null = null;
+    let bestDist: number | null = null;
+
+    for (const group of groups) {
+        const dist = distanceMeters(viewCenter, group.representativeCenter);
+        if (dist != null && (bestDist == null || dist < bestDist)) {
+            bestDist = dist;
+            bestByDist = group;
+        }
+    }
+
+    return bestByDist;
+};
+

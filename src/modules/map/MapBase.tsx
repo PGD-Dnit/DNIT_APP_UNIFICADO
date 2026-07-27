@@ -38,7 +38,7 @@ export default function MapBase() {
             container: divRef.current,
             map,
             center: [-53, -15.8],
-            zoom: 4,
+            zoom: 8,
             extent: {
                 xmin: -75,
                 ymin: -35,

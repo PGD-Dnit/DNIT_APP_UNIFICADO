@@ -17,38 +17,63 @@ function hydrateStore(data: any) {
 
 export default function SinglePanoPage() {
     const targetOrigin = window.location.origin;
+    const mid = new URLSearchParams(window.location.search).get("mid");
 
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const mid = params.get("mid");
-
-        // ── 1. Rehidratação pós-F5: lê payload salvo em sessionStorage ──
+        // ── 1. Rehidratação pós-F5 ──
+        // Lê o payload salvo em sessionStorage e restaura o store.
+        // IMPORTANTE: só hidrata se o store estiver vazio (selectedExposureLeft == null),
+        // pois ao voltar de /compare via navegação SPA o store já tem o último ponto
+        // selecionado (ponto C) e não deve ser sobrescrito pelo cache antigo.
         if (mid) {
             try {
                 const cached = sessionStorage.getItem(SESSION_KEY_PREFIX + mid);
-                if (cached) {
+                if (cached && !useAppStore.getState().selectedExposureLeft) {
                     hydrateStore(JSON.parse(cached));
                 }
             } catch { }
         }
 
-        // ── 2. Listener de postMessage (primeira carga ou dados atualizados) ──
+        // ── 2. Mantém sessionStorage sincronizado com o store (via Zustand subscribe) ──
+        // Usamos useAppStore.subscribe() ao invés de useEffect+hooks para evitar:
+        //   a) Race condition com React.StrictMode (double-invocation de effects)
+        //   b) Closures stale com valores nulos sobrescrevendo o sessionStorage
+        // O subscribe só dispara quando algo REALMENTE muda — nunca no estado inicial vazio.
+        let unsubscribeStore: (() => void) | null = null;
+        if (mid) {
+            const midKey = mid; // captura estável para o closure
+            unsubscribeStore = useAppStore.subscribe((state, prev) => {
+                // ignora mudanças irrelevantes
+                if (
+                    state.selectedExposureLeft  === prev.selectedExposureLeft &&
+                    state.selectedExposureRight === prev.selectedExposureRight &&
+                    state.candidateExposures    === prev.candidateExposures &&
+                    state.lastClickedPoint      === prev.lastClickedPoint
+                ) return;
+
+                try {
+                    const payload = {
+                        __type: "DNIT_COMPARE_INIT",
+                        msgId: midKey,
+                        lastClickedPoint: state.lastClickedPoint,
+                        candidates: state.candidateExposures,
+                        left: state.selectedExposureLeft,
+                        right: state.selectedExposureRight,
+                    };
+                    sessionStorage.setItem(SESSION_KEY_PREFIX + midKey, JSON.stringify(payload));
+                } catch { }
+            });
+        }
+
+        // ── 3. Listener de postMessage (primeira carga vinda da aba principal) ──
         const onMsg = (e: MessageEvent) => {
             if (e.origin !== targetOrigin) return;
-
             const data: any = e.data;
             if (!data || data.__type !== "DNIT_COMPARE_INIT") return;
-
-            // aceita apenas o msgId correspondente a esta aba (se informado)
             if (mid && data.msgId && data.msgId !== mid) return;
 
-            // persiste para sobreviver ao F5
-            try {
-                if (data.msgId) {
-                    sessionStorage.setItem(SESSION_KEY_PREFIX + data.msgId, JSON.stringify(data));
-                }
-            } catch { }
-
+            // O subscribe do Zustand (passo 2) vai persistir automaticamente
+            // quando o store for atualizado abaixo — não precisamos gravar aqui.
             hydrateStore(data);
 
             // ACK para a aba origem parar o retry
@@ -61,7 +86,10 @@ export default function SinglePanoPage() {
         };
 
         window.addEventListener("message", onMsg);
-        return () => window.removeEventListener("message", onMsg);
+        return () => {
+            window.removeEventListener("message", onMsg);
+            unsubscribeStore?.();
+        };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
@@ -70,3 +98,4 @@ export default function SinglePanoPage() {
         </div>
     );
 }
+

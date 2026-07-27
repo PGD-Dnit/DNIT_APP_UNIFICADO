@@ -70,7 +70,35 @@ export default function ComparePage() {
             } catch { }
         }
 
-        // ── 2. Listener de postMessage (primeira carga ou dados atualizados) ──
+        // ── 2. Mantém sessionStorage atualizado enquanto o usuário navega no minimap ──
+        // Sem isso, ao voltar para /view360 o SinglePanoPage leria o estado antigo
+        // (ponto A) em vez do último ponto selecionado (ponto C).
+        let unsubscribeStore: (() => void) | null = null;
+        if (mid) {
+            const midKey = mid;
+            unsubscribeStore = useAppStore.subscribe((state, prev) => {
+                if (
+                    state.selectedExposureLeft  === prev.selectedExposureLeft &&
+                    state.selectedExposureRight === prev.selectedExposureRight &&
+                    state.candidateExposures    === prev.candidateExposures &&
+                    state.lastClickedPoint      === prev.lastClickedPoint
+                ) return;
+
+                try {
+                    const payload = {
+                        __type: "DNIT_COMPARE_INIT",
+                        msgId: midKey,
+                        lastClickedPoint: state.lastClickedPoint,
+                        candidates: state.candidateExposures,
+                        left: state.selectedExposureLeft,
+                        right: state.selectedExposureRight,
+                    };
+                    sessionStorage.setItem(SESSION_KEY_PREFIX + midKey, JSON.stringify(payload));
+                } catch { }
+            });
+        }
+
+        // ── 3. Listener de postMessage (primeira carga ou dados atualizados) ──
         const onMsg = (e: MessageEvent) => {
             if (e.origin !== targetOrigin) return;
             const data: any = e.data;
@@ -99,7 +127,10 @@ export default function ComparePage() {
         };
 
         window.addEventListener("message", onMsg);
-        return () => window.removeEventListener("message", onMsg);
+        return () => {
+            window.removeEventListener("message", onMsg);
+            unsubscribeStore?.();
+        };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (

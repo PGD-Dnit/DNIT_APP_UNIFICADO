@@ -88,8 +88,7 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
     const setSelectedExposureLeft = useAppStore((s) => s.setSelectedExposureLeft);
     const setSelectedExposureRight = useAppStore((s) => s.setSelectedExposureRight);
 
-    const setCompareOpen = useAppStore((s) => s.setCompareOpen);
-    const compareOpen = useAppStore((s) => s.compareOpen);
+
 
     // ✅ múltiplas camadas oriented no mini
     const layersRef = useRef<FeatureLayer[]>([]);
@@ -268,24 +267,23 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
 
             setCandidateExposures(candidates);
 
-            const left = candidates[0] ?? null;
-            const right = candidates[0] ?? null;
+            const selected = candidates[0] ?? null;
 
-            setSelectedExposureLeft(left);
-            setSelectedExposureRight(right);
-
-            // abre a tela de comparação se ainda não estiver aberta
-            if (!compareOpen) setCompareOpen(true);
+            // Sempre atualiza os dois lados com o ponto clicado.
+            // - Tela single: o viewer só exibe panoLeft, panoRight é ignorado visualmente.
+            // - Tela compare: ambos os lados exibem a nova imagem (duplicado correto).
+            setSelectedExposureLeft(selected);
+            setSelectedExposureRight(selected);
 
             // highlight do selecionado (aplica por layer, usando FeatureEffect na layer certa)
-            applyHighlight(left);
+            applyHighlight(selected);
 
             // zoom no primeiro (se achar geometry)
             const bestGraphic = exposureGraphics.find((gr) => {
                 const lyr = gr.layer as FeatureLayer;
                 const oidField = lyr.objectIdField;
                 const oid = safeNum(gr.attributes?.[oidField]);
-                return oid === left?.objectId && ensureLayer0(lyr.url) === left?.layerUrl;
+                return oid === selected?.objectId && ensureLayer0(lyr.url) === selected?.layerUrl;
             });
 
             try {

@@ -107,63 +107,64 @@ export default function ComparePanoScreen() {
     );
   };
 
-  // LEFT pano
+  // ── Carrega LEFT e RIGHT em paralelo, atualizando ambos ao mesmo tempo ──
+  // Um único efeito com Promise.all evita o estado intermediário onde
+  // panoLeft já tem a nova URL mas panoRight ainda tem a URL antiga,
+  // o que causava o DualPanoViewer renderizar com imagens misturadas.
   useEffect(() => {
-    (async () => {
-      if (!leftExp) {
-        setPanoLeft(null);
-        return;
-      }
-      const list = await listAttachments(leftExp.layerUrl, leftExp.objectId);
-      const best = pickBest(list);
-      if (!best) {
-        setPanoLeft(null);
-        return;
-      }
-      const url = buildAttachmentUrl(leftExp.layerUrl, leftExp.objectId, best.id);
+    let cancelled = false;
 
-      setPanoLeft({
-        objectId: leftExp.objectId,
+    // Limpa imediatamente ao trocar de exposição para não exibir par antigo
+    setPanoLeft(null);
+    setPanoRight(null);
+
+    if (!leftExp && !rightExp) return;
+
+    const loadPano = async (exp: typeof leftExp) => {
+      if (!exp) return null;
+      const list = await listAttachments(exp.layerUrl, exp.objectId);
+      const best = pickBest(list);
+      if (!best) return null;
+      const url = buildAttachmentUrl(exp.layerUrl, exp.objectId, best.id);
+      return {
+        objectId: exp.objectId,
         attachmentId: best.id,
         url,
         name: best.name ?? undefined,
         contentType: best.contentType ?? undefined,
-        cameraHeading: leftExp.attrs?.cameraheading ?? leftExp.attrs?.cameraHeading ?? undefined,
-        cameraPitch: leftExp.attrs?.camerapitch ?? leftExp.attrs?.cameraPitch ?? undefined,
-        cameraRoll: leftExp.attrs?.cameraroll ?? leftExp.attrs?.cameraRoll ?? undefined,
-        vfov: leftExp.attrs?.verticalfieldofview ?? leftExp.attrs?.vfov ?? undefined,
-      });
-    })().catch(() => setPanoLeft(null));
-  }, [leftExp?.layerUrl, leftExp?.objectId, leftExp, setPanoLeft]);
+        cameraHeading: exp.attrs?.cameraheading ?? exp.attrs?.cameraHeading ?? undefined,
+        cameraPitch: exp.attrs?.camerapitch ?? exp.attrs?.cameraPitch ?? undefined,
+        cameraRoll: exp.attrs?.cameraroll ?? exp.attrs?.cameraRoll ?? undefined,
+        vfov: exp.attrs?.verticalfieldofview ?? exp.attrs?.vfov ?? undefined,
+      };
+    };
 
-  // RIGHT pano
-  useEffect(() => {
     (async () => {
-      if (!rightExp) {
-        setPanoRight(null);
-        return;
+      try {
+        // Carrega ambos em paralelo — só atualiza o store quando os dois terminarem
+        const [left, right] = await Promise.all([
+          loadPano(leftExp),
+          loadPano(rightExp),
+        ]);
+        if (cancelled) return;
+        // Atualização atômica: ambos os lados recebem a nova imagem juntos
+        setPanoLeft(left);
+        setPanoRight(right);
+      } catch {
+        if (!cancelled) {
+          setPanoLeft(null);
+          setPanoRight(null);
+        }
       }
-      const list = await listAttachments(rightExp.layerUrl, rightExp.objectId);
-      const best = pickBest(list);
-      if (!best) {
-        setPanoRight(null);
-        return;
-      }
-      const url = buildAttachmentUrl(rightExp.layerUrl, rightExp.objectId, best.id);
+    })();
 
-      setPanoRight({
-        objectId: rightExp.objectId,
-        attachmentId: best.id,
-        url,
-        name: best.name ?? undefined,
-        contentType: best.contentType ?? undefined,
-        cameraHeading: rightExp.attrs?.cameraheading ?? rightExp.attrs?.cameraHeading ?? undefined,
-        cameraPitch: rightExp.attrs?.camerapitch ?? rightExp.attrs?.cameraPitch ?? undefined,
-        cameraRoll: rightExp.attrs?.cameraroll ?? rightExp.attrs?.cameraRoll ?? undefined,
-        vfov: rightExp.attrs?.verticalfieldofview ?? rightExp.attrs?.vfov ?? undefined,
-      });
-    })().catch(() => setPanoRight(null));
-  }, [rightExp?.layerUrl, rightExp?.objectId, rightExp, setPanoRight]);
+    return () => { cancelled = true; };
+  }, [
+    leftExp?.layerUrl, leftExp?.objectId,
+    rightExp?.layerUrl, rightExp?.objectId,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setPanoLeft, setPanoRight,
+  ]);
 
   const onPickLeft = (d: Date) => {
     const found = findExposureByDay(d);
