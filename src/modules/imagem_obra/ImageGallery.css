@@ -1,0 +1,141 @@
+/* src/modules/imagem_obra/ImageGallery.css */
+
+.img-gallery {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: auto;
+    max-height: calc(100vh - 140px);
+}
+
+/* Cabeçalho "N fotos" */
+.img-gallery__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.55);
+    padding: 0 2px;
+}
+
+.img-gallery__label-icon {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* Lista scrollável */
+.img-gallery__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    padding-right: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+.img-gallery__list::-webkit-scrollbar {
+    width: 4px;
+}
+.img-gallery__list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.img-gallery__list::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
+}
+
+/* Card de cada item */
+.img-gallery__item {
+    width: 88px;
+    height: 88px;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.91);
+    position: relative;
+    padding: 0;
+    transition: border-color 0.18s, transform 0.15s, box-shadow 0.18s;
+    flex-shrink: 0;
+}
+
+.img-gallery__item:hover {
+    border-color: rgba(255,255,255,0.55);
+    transform: scale(1.04);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+}
+
+.img-gallery__item--active {
+    border-color: #4fc3f7;
+    box-shadow: 0 0 0 1px #4fc3f7, 0 4px 16px rgba(79,195,247,0.35);
+}
+
+/* Thumbnail da imagem */
+.img-gallery__thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Placeholder quando ainda carregando ou sem imagem */
+.img-gallery__thumb-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(0, 0, 0, 0.3);
+    font-size: 20px;
+}
+
+/* Data sobreposta no rodapé do card */
+.img-gallery__date {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 600;
+    text-align: center;
+    padding: 3px 2px;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+}
+
+/* Número do item no canto superior direito */
+.img-gallery__index {
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 4px;
+    pointer-events: none;
+    line-height: 1.4;
+}
+
+/* Barra lateral azul no item ativo */
+.img-gallery__active-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #4fc3f7;
+    border-radius: 12px 0 0 12px;
+}

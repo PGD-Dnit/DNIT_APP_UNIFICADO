@@ -1,0 +1,339 @@
+/* ===============================
+   SingleMapPage.css
+   Layout e estilos do mapa único
+   =============================== */
+
+/* ── Container principal ── */
+#single-map-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: var(--panel, #000);
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+}
+
+#single-map-container p {
+    color: var(--muted, #171718);
+    margin: 8px 0;
+}
+
+/* ── Mapa ── */
+#single-mapa {
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    background: var(--panel, #fff);
+    display: flex;
+    flex-direction: column;
+}
+
+#single-mapa>div:not(.single-camadas) {
+    flex: 1;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ── Botão de camadas ── */
+.single-btn-camadas-icon {
+    position: absolute;
+    top: 90px;
+    left: 15px;
+    font-size: 14px;
+    color: #141414;
+    background: #ffffff;
+    border-radius: 10px;
+    width: 36px !important;
+    height: 36px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer;
+    z-index: 4000;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    transition: background 0.25s, transform 0.2s, box-shadow 0.2s;
+}
+
+.single-btn-camadas-icon:hover {
+    background: #f3f4f6;
+    transform: scale(1.08);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+/* ── Painel de camadas ── */
+.single-camadas {
+    position: absolute;
+    top: 150px;
+    left: 120px;
+    width: 360px;
+    max-width: calc(100vw - 90px);
+    max-height: calc(100vh - 104px);
+    overflow-y: auto;
+    z-index: 3000;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 18px;
+    box-shadow: var(--shadow-strong, 0 16px 40px rgba(15, 23, 42, 0.16));
+    padding: 14px;
+    color: var(--text, #1a1f2c);
+    box-sizing: border-box;
+    backdrop-filter: blur(10px);
+    transition: transform 0.28s ease, opacity 0.28s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+    .single-camadas {
+        background: rgba(15, 23, 42, 0.96);
+    }
+}
+
+.single-camadas.fechada {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    pointer-events: none;
+}
+
+.single-camadas.aberta {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* ── Header do painel ── */
+.single-camadas-header {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.single-camadas-header-text {
+    flex: 1;
+}
+
+.single-camadas-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text, #1a1f2c);
+    letter-spacing: 0.01em;
+}
+
+.single-camadas-subtitle {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    color: var(--muted, #6b7280);
+}
+
+/* ── Seções ── */
+.single-camadas-section {
+    margin-bottom: 14px;
+    padding: 12px;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 14px;
+    background: var(--panel-soft, #f8fafc);
+}
+
+.single-section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.single-section-title-row h5 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--text, #1a1f2c);
+}
+
+.single-section-badge {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--accent-soft-2, #eef2ff);
+    color: var(--accent, #2563eb);
+    font-size: 0.74rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.single-section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ── Grupos Drone ── */
+.single-drone-group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.single-drone-group-card {
+    width: 100%;
+    text-align: left;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-strong, #d1d5db);
+    background: var(--panel, #ffffff);
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.single-drone-group-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+    border-color: var(--indigo-border, #818cf8);
+}
+
+.single-drone-group-card.selected {
+    background: rgba(37, 99, 235, 0.1);
+    border-left: 4px solid #2563eb;
+}
+
+.single-drone-group-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.single-drone-group-name {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--text, #1a1f2c);
+    line-height: 1.25;
+    word-break: break-word;
+}
+
+.single-drone-group-count {
+    white-space: nowrap;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--accent-soft, #eff6ff);
+    color: var(--accent, #2563eb);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.single-drone-group-card-meta {
+    font-size: 0.77rem;
+    color: var(--muted, #6b7280);
+    margin-top: 4px;
+    line-height: 1.35;
+}
+
+.single-drone-group-card-meta strong {
+    color: var(--text, #1a1f2c);
+    font-weight: 700;
+}
+
+.single-drone-group-extra {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-strong, #d1d5db);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.single-drone-group-extra-item {
+    font-size: 0.76rem;
+    color: var(--muted, #6b7280);
+    line-height: 1.35;
+}
+
+.single-drone-group-extra-item strong {
+    color: var(--text, #1a1f2c);
+}
+
+/* ── Datas do grupo ── */
+.single-selected-group-caption {
+    margin-bottom: 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--muted, #6b7280);
+}
+
+.single-day-pill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.single-day-pill {
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong, #d1d5db);
+    background: var(--panel, #ffffff);
+    font-size: 0.79rem;
+    font-weight: 700;
+    color: var(--text, #1a1f2c);
+    cursor: pointer;
+    transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.single-day-pill:hover {
+    transform: translateY(-1px);
+    border-color: #86efac;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+}
+
+.single-day-pill.selected {
+    border-color: #86efac;
+    background: #ecfdf5;
+    color: var(--text, #1a1f2c);
+}
+
+/* ── Scrollbar ── */
+.single-camadas::-webkit-scrollbar {
+    width: 10px;
+}
+
+.single-camadas::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.single-camadas::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45);
+    border-radius: 999px;
+}
+
+.single-camadas::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.6);
+}
+
+/* ── Responsividade ── */
+@media (max-width: 900px) {
+    .single-camadas {
+        top: 76px;
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-width: none;
+        max-height: calc(100vh - 92px);
+        padding: 12px;
+    }
+
+    .single-btn-camadas-icon {
+        top: 82px;
+        left: 12px;
+    }
+}

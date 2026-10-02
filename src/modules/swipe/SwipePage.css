@@ -1,0 +1,520 @@
+/* ===============================
+   SwipePage.css
+   Layout fixo e painel lateral refinado
+   =============================== */
+
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel-soft: #f8fafc;
+  --text: #1a1f2c;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --accent: #2563eb;
+  --accent-hover: #1e40af;
+  --accent-soft: #eff6ff;
+  --accent-soft-2: #eef2ff;
+  --success-soft: #ecfdf5;
+  --success-border: #86efac;
+  --indigo-border: #818cf8;
+  --indigo-bg: #eef2ff;
+  --shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+  --shadow-strong: 0 16px 40px rgba(15, 23, 42, 0.16);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0f16;
+    --panel: #0f172a;
+    --panel-soft: #111827;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --border: #1f2937;
+    --border-strong: #334155;
+    --accent: #60a5fa;
+    --accent-hover: #93c5fd;
+    --accent-soft: rgba(37, 99, 235, 0.18);
+    --accent-soft-2: rgba(99, 102, 241, 0.18);
+    --success-soft: rgba(34, 197, 94, 0.14);
+    --success-border: #22c55e;
+    --indigo-border: #6366f1;
+    --indigo-bg: rgba(99, 102, 241, 0.16);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    --shadow-strong: 0 16px 40px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* ===============================
+   TIPOGRAFIA GERAL
+   =============================== */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ===============================
+   CONTAINER PRINCIPAL
+   =============================== */
+#webmap-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--panel, #000);
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+
+#webmap-container p {
+  color: var(--muted);
+  margin: 8px 0;
+}
+
+/* ===============================
+   MAPA CENTRAL
+   =============================== */
+#mapa {
+  grid-area: map;
+  flex: 1;
+  height: 100%;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  position: relative;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+}
+
+#mapa>div:not(.camadas) {
+  flex: 1;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ===============================
+   CALENDÁRIO
+   =============================== */
+.calendar-view-container {
+  position: sticky;
+  top: 12px;
+  max-width: 220px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+  z-index: 100;
+  backdrop-filter: blur(6px);
+  font-size: 0.85rem;
+}
+
+.highlight-date {
+  background-color: rgba(46, 181, 49, 0.6) !important;
+  border-radius: 5%;
+  color: #fff !important;
+  font-weight: bold;
+}
+
+/* ===============================
+   BOTÕES FLUTUANTES
+   =============================== */
+.btn-camadas-icon {
+  position: absolute;
+  top: 90px;
+  left: 15px;
+  font-size: 14px;
+  color: #141414;
+  background: #ffffff;
+  border-radius: 10px;
+  width: 36px !important;
+  height: 36px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  z-index: 30;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: background 0.25s, transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-camadas-icon:hover {
+  background: #f3f4f6;
+  transform: scale(1.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+.btn-dualmode {
+  position: absolute;
+  z-index: 90;
+  top: 138px;
+  left: 15px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-dualmode:hover {
+  transform: scale(1.06);
+  background: #f3f4f6;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+/* ===============================
+   DRAWER / PAINEL DE CAMADAS
+   =============================== */
+.camadas {
+  position: absolute;
+  top: 150px;
+  left: 120px;
+  width: 360px;
+  max-width: calc(100vw - 90px);
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  z-index: 3000;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-strong);
+  padding: 14px;
+  color: var(--text);
+  box-sizing: border-box;
+  backdrop-filter: blur(10px);
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .camadas {
+    background: rgba(15, 23, 42, 0.96);
+  }
+}
+
+.camadas.fechada {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
+  pointer-events: none;
+}
+
+.camadas.aberta {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ===============================
+   HEADER DO PAINEL
+   =============================== */
+.camadas-header {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.camadas-header-text {
+  flex: 1;
+}
+
+.temporal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0;
+  line-height: 1;
+  margin-left: 8px;
+  transition: color 0.2s;
+}
+
+.temporal-close-btn:hover {
+  color: var(--text);
+}
+
+.camadas-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.camadas-subtitle {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ===============================
+   SEÇÕES
+   =============================== */
+.camadas-section {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-soft);
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.section-title-row h5 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.section-badge {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--accent-soft-2);
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selected-group-caption {
+  margin-bottom: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* ===============================
+   GRUPOS DRONE
+   =============================== */
+.drone-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drone-group-card {
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.drone-group-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  border-color: var(--indigo-border);
+}
+
+.drone-group-card.selected {
+  background: rgba(37, 99, 235, 0.1);
+  border-left: 4px solid #2563eb;
+}
+
+.drone-group-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.drone-group-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.drone-group-count {
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.drone-group-card-meta {
+  font-size: 0.77rem;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.drone-group-card-meta strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.drone-group-extra {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drone-group-extra-item {
+  font-size: 0.76rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.drone-group-extra-item strong {
+  color: var(--text);
+}
+
+/* ===============================
+   DATAS DO GRUPO
+   =============================== */
+.day-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.day-pill {
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.day-pill:hover {
+  transform: translateY(-1px);
+  border-color: var(--success-border);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+}
+
+.day-pill.selected {
+  border-color: var(--success-border);
+  background: var(--success-soft);
+  color: var(--text);
+}
+
+/* ===============================
+   SCROLLBAR
+   =============================== */
+.camadas::-webkit-scrollbar {
+  width: 10px;
+}
+
+.camadas::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.camadas::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+}
+
+.camadas::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+/* ===============================
+   TOPBAR
+   =============================== */
+topbar {
+  height: 52;
+  position: relative;
+  z-index: 10;
+}
+
+/* ===============================
+   RESPONSIVIDADE
+   =============================== */
+@media (max-width: 1200px) {
+  #webmap-container {
+    grid-template-columns: 200px 1fr 200px;
+  }
+}
+
+@media (max-width: 900px) {
+  #webmap-container {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "map"
+      "left"
+      "right";
+    gap: 12px;
+  }
+
+  .lista {
+    position: static;
+    max-height: none;
+  }
+
+  #mapa {
+    min-height: 520px;
+  }
+
+  .camadas {
+    top: 76px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 92px);
+    padding: 12px;
+  }
+
+  .btn-camadas-icon {
+    top: 82px;
+    left: 12px;
+  }
+
+  .btn-dualmode {
+    top: 126px;
+    left: 12px;
+  }
+}

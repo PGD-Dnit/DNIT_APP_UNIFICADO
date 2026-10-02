@@ -1,0 +1,40 @@
+/* src/modules/imagem_360/PanoToggleBtn.css */
+
+.pano-toggle-btn {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 28px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(20, 28, 40, 0.82);
+    backdrop-filter: blur(12px);
+    color: #e8eef6;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+}
+
+.pano-toggle-btn:hover {
+    background: rgba(50, 80, 130, 0.90);
+    border-color: rgba(100, 160, 255, 0.50);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.65);
+}
+
+.pano-toggle-btn:active {
+    background: rgba(40, 65, 110, 0.95);
+}
+
+.pano-toggle-btn__icon {
+    font-size: 15px;
+    opacity: 0.85;
+}

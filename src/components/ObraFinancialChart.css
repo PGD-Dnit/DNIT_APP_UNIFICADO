@@ -1,0 +1,139 @@
+/* src/components/ObraFinancialChart.css */
+
+.financial-chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--bg-hero, rgba(30, 41, 59, 0.3));
+  border: 1px solid var(--border-card, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 8px;
+}
+
+.financial-chart-content {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+/* Donut SVG */
+.financial-donut-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.financial-donut-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.financial-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.financial-center-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-hero-title, #ffffff);
+}
+
+.financial-center-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-label, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Legend List */
+.financial-legend-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  min-width: 240px;
+}
+
+.financial-legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.financial-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.financial-legend-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.financial-legend-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-label, #64748b);
+  text-transform: uppercase;
+}
+
+.financial-legend-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-value, #f1f5f9);
+}
+
+.financial-legend-pct {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-left: 4px;
+}
+
+/* Stacked Progress Bar */
+.financial-progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.financial-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-label, #64748b);
+}
+
+.financial-progress-bar {
+  height: 10px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+  display: flex;
+}
+
+.financial-progress-segment {
+  height: 100%;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}

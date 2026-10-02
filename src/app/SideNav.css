@@ -1,0 +1,54 @@
+.sidenav {
+    position: absolute;
+    left: 15px;
+    top: 172px;
+    /* ajuste conforme sua topbar */
+    z-index: 50;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 3px;
+    padding: 3px;
+
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(6px);
+}
+
+.sidenav-btn {
+    width: 24px;
+    height: 24px;
+
+    display: flex;
+    /* 👈 troca grid por flex */
+    align-items: center;
+    justify-content: center;
+
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+
+    color: #1f2937;
+    font-size: 15px;
+}
+
+.sidenav-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.sidenav-btn.is-active {
+    background: rgba(0, 0, 0, 0.10);
+    outline: 2px solid rgba(0, 0, 0, 0.20);
+}
+
+.sidenav-btn i {
+    display: block;
+    /* 👈 importante */
+    width: 1em;
+    height: 1em;
+    line-height: 1;
+}

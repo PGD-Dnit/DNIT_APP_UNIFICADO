@@ -1,0 +1,42 @@
+/* ======================================
+   MapaInicialViewer.css
+   Badge flutuante do mapa único
+   ====================================== */
+
+.mapa-inicial-badge {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4000;
+    pointer-events: none;
+}
+
+.mapa-inicial-badge-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.10);
+    border-radius: 999px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+    backdrop-filter: blur(6px);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1a1f2c;
+    font-family: "Poppins", sans-serif;
+    white-space: nowrap;
+    max-width: calc(100vw - 160px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (prefers-color-scheme: dark) {
+    .mapa-inicial-badge-inner {
+        background: rgba(15, 23, 42, 0.92);
+        border-color: rgba(255, 255, 255, 0.10);
+        color: #e5e7eb;
+    }
+}
+

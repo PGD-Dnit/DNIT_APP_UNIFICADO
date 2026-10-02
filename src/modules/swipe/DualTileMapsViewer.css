@@ -1,0 +1,69 @@
+.dual-maps-page {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.dual-map-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.dual-map {
+    width: 100%;
+    height: 100%;
+}
+
+/* títulos flutuantes */
+.floating-title {
+    position: absolute;
+    top: 10px;
+    z-index: 10;
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    background: rgba(255, 255, 255, 0.9);
+    padding: 6px 10px;
+    border-radius: 6px;
+
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.floating-title-left {
+    left: 10px;
+}
+
+.floating-title-right {
+    right: 10px;
+}
+
+/* botão calendário */
+.calendar-toggle-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.calendar-toggle-btn:hover {
+    transform: scale(1.1);
+}
+
+/* popover calendário */
+.calendar-popover {
+    position: absolute;
+    top: 36px;
+    z-index: 20;
+}
+
+.calendar-popover.left {
+    left: 0;
+}
+
+.calendar-popover.right {
+    right: 0;
+}

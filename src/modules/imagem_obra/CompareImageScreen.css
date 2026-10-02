@@ -1,0 +1,48 @@
+/* src/modules/imagem_obra/CompareImageScreen.css */
+
+.cps {
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    background: #0b0f14;
+}
+
+.cps__viewer {
+    position: absolute;
+    inset: 0;
+}
+
+.cps__panel-left {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 50;
+    pointer-events: auto;
+}
+
+.cps__panel-right {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 50;
+    pointer-events: auto;
+}
+
+.cps__calendarLabel {
+    font-weight: 900;
+    font-size: 12px;
+    margin: 0 0 6px 2px;
+    opacity: 0.9;
+    color: #fff;
+}
+
+.cps__minimap {
+    position: absolute;
+    left: 15px;
+    bottom: 60px;
+    z-index: 50;
+    pointer-events: auto;
+}
