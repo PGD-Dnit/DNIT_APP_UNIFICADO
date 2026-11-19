@@ -1,25 +1,20 @@
 // src/app/AppShell.tsx
-import React from "react";
+import React, { useCallback } from "react";
 import { useAppStore } from "../core/store";
 
 import MapBase from "../modules/map/MapBase";
-
-// import SideNav from "./SideNav"; // ajuste path
-
-// ajuste estes imports para os seus componentes reais:
 import SwipePage from "../modules/swipe/SwipePage";
 import SingleMapPage from "../modules/swipe/SingleMapPage";
 import AppInit from "../core/AppInit";
 import ErrorBoundary from "../core/ErrorBoundary";
-
 import ObraDetailsModal from "../components/ObraDetailsModal";
 
 export default function AppShell() {
   const activeMode = useAppStore((s) => s.activeMode);
   const selectedObraQuery = useAppStore((s) => s.selectedObraQuery);
   const setSelectedObraQuery = useAppStore((s) => s.setSelectedObraQuery);
+  const handleCloseObraModal = useCallback(() => setSelectedObraQuery(null), [setSelectedObraQuery]);
 
-  //const inMap = activeMode === "map";
   const inSwipe = activeMode === "swipe";
   const in360 = activeMode === "image360";
   const inImageObra = activeMode === "imageObra";
@@ -31,10 +26,8 @@ export default function AppShell() {
       </header>
 
       <main style={styles.body}>
-        {/* ✅ Mapa base sempre montado */}
         <MapBase />
 
-        {/* ✅ Overlay Swipe */}
         {inSwipe && (
           <div
             style={{
@@ -48,7 +41,6 @@ export default function AppShell() {
           </div>
         )}
 
-        {/* ✅ Overlay Mapa Inicial */}
         {inMapaInicial && (
           <div
             style={{
@@ -62,7 +54,6 @@ export default function AppShell() {
           </div>
         )}
 
-        {/* ✅ Overlay 360 / Imagem Obra / Mapa */}
         {(in360 || inImageObra || activeMode === "map") && (
           <div
             style={{
@@ -78,12 +69,11 @@ export default function AppShell() {
           </div>
         )}
 
-        {/* ✅ Modal de Detalhes da Obra quando selecionada no mapa */}
         {selectedObraQuery && (
           <ObraDetailsModal
             id={selectedObraQuery.id}
             globalid={selectedObraQuery.globalid}
-            onClose={() => setSelectedObraQuery(null)}
+            onClose={handleCloseObraModal}
           />
         )}
       </main>
@@ -111,19 +101,6 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#210f0fff",
     zIndex: 20,
   },
-  brand: { fontWeight: 700, cursor: "pointer", userSelect: "none" },
-  nav: { display: "flex", gap: 8 },
-  btn: {
-    height: 32,
-    padding: "0 10px",
-    borderRadius: 8,
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "transparent",
-    color: "inherit",
-    cursor: "pointer",
-    fontSize: 13,
-  },
-  btnActive: { background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.25)" },
   body: { flex: 1, overflow: "hidden", position: "relative" },
 
   overlay: {

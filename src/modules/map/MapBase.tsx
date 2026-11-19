@@ -4,7 +4,6 @@ import MapView from "@arcgis/core/views/MapView";
 import WebTileLayer from "@arcgis/core/layers/WebTileLayer";
 
 
-// ✅ Widgets
 import Search from "@arcgis/core/widgets/Search";
 import Compass from "@arcgis/core/widgets/Compass";
 
@@ -17,7 +16,6 @@ export default function MapBase() {
     const viewRef = useRef<MapView | null>(null);
     const planetLayerRef = useRef<WebTileLayer | null>(null);
 
-    // ✅ refs p/ widgets (pra destruir no cleanup)
     const searchRef = useRef<Search | null>(null);
     const compassRef = useRef<Compass | null>(null);
 
@@ -27,7 +25,6 @@ export default function MapBase() {
     const planetSelectedId = useAppStore((s) => s.planetSelectedId);
     const planetMosaics = useAppStore((s) => s.planetMosaics);
 
-    /* 1️⃣ Cria MapView e carrega mosaics (1x) */
     useEffect(() => {
         if (!divRef.current) return;
         if (viewRef.current) return;
@@ -68,7 +65,6 @@ export default function MapBase() {
             setMapView(view);
             loadPlanetMosaics();
 
-            // 🔎 FIND / SEARCH
             const search = new Search({
                 view,
                 includeDefaultSources: true,
@@ -79,14 +75,12 @@ export default function MapBase() {
             view.ui.add(search, { position: "top-right", index: 0 });
             searchRef.current = search;
 
-            // 🧭 BÚSSOLA (mostra e reseta rotação)
             const compass = new Compass({ view });
             view.ui.add(compass, { position: "top-right", index: 1 });
             compassRef.current = compass;
         });
 
         return () => {
-            // remove/destroi widgets antes de destruir o view
             try {
                 if (searchRef.current) {
                     view.ui.remove(searchRef.current);
@@ -107,7 +101,6 @@ export default function MapBase() {
         };
     }, [setMapView, loadPlanetMosaics]);
 
-    /* 2️⃣ Aplica / atualiza camada Planet quando mudar o mosaico */
     useEffect(() => {
         const view = viewRef.current;
         if (!view) return;

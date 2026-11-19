@@ -6,6 +6,7 @@
 import type FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import type { ExposureRef } from "../../core/types";
 import { CONFIG } from "../../core/config";
+import { getAuthHeaders } from "../../services/authService";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -16,6 +17,7 @@ export type PointLayerItem = {
     title?: string;
     access?: string;        // "public"
     serviceUrl?: string | null; // pode vir .../FeatureServer ou .../FeatureServer/0
+    featureUrl?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -65,23 +67,34 @@ export function ensureLayer0(url: string | null | undefined): string {
 // Chamada HTTP
 // ---------------------------------------------------------------------------
 
-/** Busca a lista de camadas de ponto do endpoint /point-layer. */
+/** Busca a lista de camadas de fotos de obra (/point-layer com fallback para /fotos-obras). */
 export async function fetchPointLayers(): Promise<PointLayerItem[]> {
-    const r = await fetch(`${CONFIG.API_BASE}/point-layer`, { credentials: "include" });
-    const raw = await r.text();
+    const endpoints = [`${CONFIG.API_BASE}/point-layer`, `${CONFIG.API_BASE}/fotos-obras`];
+    let lastError = "";
 
-    if (!r.ok) {
-        throw new Error(`GET /point-layer falhou: HTTP ${r.status} — ${raw.slice(0, 200)}`);
+    for (const url of endpoints) {
+        try {
+            const r = await fetch(url, {
+                credentials: "include",
+                headers: { ...getAuthHeaders() },
+            });
+            const raw = await r.text();
+
+            if (!r.ok) {
+                lastError = `GET ${url} falhou: HTTP ${r.status} — ${raw.slice(0, 200)}`;
+                continue;
+            }
+
+            const data = JSON.parse(raw);
+            if (Array.isArray(data)) {
+                return data as PointLayerItem[];
+            }
+        } catch (err: any) {
+            lastError = err?.message || String(err);
+        }
     }
 
-    let data: any;
-    try {
-        data = JSON.parse(raw);
-    } catch {
-        throw new Error(`Resposta não-JSON em /point-layer: ${raw.slice(0, 120)}`);
-    }
-
-    return Array.isArray(data) ? (data as PointLayerItem[]) : [];
+    throw new Error(lastError || "Falha ao carregar camadas de fotos de obra");
 }
 
 // ---------------------------------------------------------------------------

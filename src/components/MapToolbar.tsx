@@ -1,4 +1,6 @@
+import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../core/store";
+import { useAuthStore, formatRoleLabel } from "../core/authStore";
 import mapaIcon from "../assets/icons/toolbar/mapa.svg";
 import swipeIcon from "../assets/icons/toolbar/swipe.svg";
 import compararIcon from "../assets/icons/toolbar/comparar.svg";
@@ -30,6 +32,7 @@ interface MapToolbarProps {
  * Estado gerenciado pelo useAppStore para persistir entre trocas de modo.
  */
 export default function MapToolbar({ showLayersBtn = true }: MapToolbarProps) {
+  const navigate = useNavigate();
   const activeMode = useAppStore((s) => s.activeMode);
   const dualMode = useAppStore((s) => s.dualMode);
   const setVisualizationMode = useAppStore((s) => s.setVisualizationMode);
@@ -39,6 +42,14 @@ export default function MapToolbar({ showLayersBtn = true }: MapToolbarProps) {
 
   const showCamadas = useAppStore((s) => s.showCamadas);
   const setShowCamadas = useAppStore((s) => s.setShowCamadas);
+
+  const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="map-toolbar">
@@ -120,6 +131,46 @@ export default function MapToolbar({ showLayersBtn = true }: MapToolbarProps) {
           <img src={compararIcon} alt="" className="map-toolbar-svg-icon" />
         </button>
         <span className="map-toolbar-label">Comparar</span>
+        <div style={{ height: "2px" }} />
+      </div>
+
+      {/* Divisor visual entre grupos */}
+      <div style={{ height: "5px" }} />
+      <div className="map-toolbar-divider" aria-hidden="true" />
+      <div style={{ height: "2px" }} />
+      <p className="map-toolbar-title">Sistema</p>
+      <div style={{ height: "5px" }} />
+
+      {/* ══ GRUPO SISTEMA / SESSÃO ══ */}
+      <div className="map-toolbar-group">
+        {/* Gestão de Obras e Contratos */}
+        <button
+          type="button"
+          className="map-toolbar-btn map-toolbar-fa-btn"
+          title="Gestão de Obras e Contratos"
+          aria-label="Gestão de Obras e Contratos"
+          onClick={() => navigate("/gestao-obras-contratos")}
+        >
+          <i className="fa-solid fa-file-contract" />
+        </button>
+        <span className="map-toolbar-label">Contratos</span>
+        <div style={{ height: "2px" }} />
+
+        {/* Sair / Logout */}
+        <button
+          type="button"
+          className="map-toolbar-btn map-toolbar-fa-btn map-toolbar-logout-btn"
+          title={
+            user
+              ? `${user.nome_completo || user.login} (${formatRoleLabel(user.role)}) — Clique para sair`
+              : "Encerrar sessão"
+          }
+          aria-label="Encerrar sessão"
+          onClick={handleLogout}
+        >
+          <i className="fa-solid fa-right-from-bracket" />
+        </button>
+        <span className="map-toolbar-label">Sair</span>
         <div style={{ height: "2px" }} />
       </div>
 

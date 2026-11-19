@@ -20,15 +20,9 @@ import {
 } from "../../core/droneUtils";
 import { useMapLayersData } from "./useMapLayersData";
 import { useDroneGroupAutoSelect } from "./useDroneGroupAutoSelect";
+import { useSuppressArcgisAbortErrors } from "../../hooks/useSuppressArcgisAbortErrors";
+import { formatMosaicDateLabel } from "../../utils/formatters";
 
-/* ─────────────────────────────────────────────────────────────
-   Tipos locais
-───────────────────────────────────────────────────────────── */
-
-
-/* ─────────────────────────────────────────────────────────────
-   Componente principal
-───────────────────────────────────────────────────────────── */
 const SingleMapPage: React.FC = () => {
     const mosaics = useAppStore((s) => s.planetMosaics);
     const mosaicsLoading = useAppStore((s) => s.planetMosaicsLoading);
@@ -79,17 +73,7 @@ const SingleMapPage: React.FC = () => {
         });
     }, [droneLayersVisible]);
 
-    /* ── Suprimir erros de abort ── */
-    useEffect(() => {
-        const handler = (event: PromiseRejectionEvent) => {
-            const r = event.reason;
-            if (r && (r.name === "AbortError" || r.name === "cancelled:layerview-create" || r.message?.includes("AbortError") || r.message?.includes("layerview creation cancelled"))) {
-                event.preventDefault();
-            }
-        };
-        window.addEventListener("unhandledrejection", handler);
-        return () => window.removeEventListener("unhandledrejection", handler);
-    }, []);
+    useSuppressArcgisAbortErrors();
 
     useEffect(() => { loadPlanetMosaics(); }, [loadPlanetMosaics]);
 
@@ -302,20 +286,7 @@ const SingleMapPage: React.FC = () => {
         ? buildPlanetTileUrl(activeMosaic.id)
         : "";
 
-    const mosaicTitle = activeMosaic?.when
-        ? (() => {
-            const match3 = activeMosaic.when.match(/(\d{4})[-_/\.](\d{2})[-_/\.](\d{2})/);
-            if (match3) return `${match3[3]}/${match3[2]}/${match3[1]}`;
-            const match2 = activeMosaic.when.match(/(\d{4})[-_/\.](\d{2})/);
-            if (match2) {
-                const y = parseInt(match2[1], 10);
-                const mo = parseInt(match2[2], 10);
-                const endD = String(new Date(y, mo, 0).getDate()).padStart(2, "0");
-                return `${endD}/${match2[2]}/${match2[1]}`;
-            }
-            return activeMosaic.when;
-        })()
-        : "?";
+    const mosaicTitle = formatMosaicDateLabel(activeMosaic?.when);
 
 
 

@@ -18,9 +18,6 @@ export type DateRange = {
 
 type ActiveMode = "map" | "swipe" | "image360" | "imageObra" | "mapa_inicial";
 
-/* =========================
-   ✅ Planet (front model)
-   ========================= */
 export type PlanetMosaicUI = {
     id: string;
     label: string;
@@ -82,18 +79,18 @@ type State = {
 
     setLastClickedPoint: (p: LastPoint | null) => void;
 
-    // ✅ Camadas p/ swipe (Planet / Wayback / etc)
+    // Camadas p/ swipe (Planet / Wayback / etc)
     leftTile: TileSource | null;
     setLeftTile: (t: TileSource | null) => void;
 
     rightTile: TileSource | null;
     setRightTile: (t: TileSource | null) => void;
 
-    // ✅ Layer de exposições ativo (p/ 360)
+    // Layer de exposições ativo (p/ 360)
     activeExposureLayerUrl: string | null;
     setActiveExposureLayerUrl: (url: string | null) => void;
 
-    // ✅ Filtros de Data
+    // Filtros de Data
     droneDateFilter: DateRange;
     setDroneDateFilter: (range: DateRange) => void;
 
@@ -105,7 +102,7 @@ type State = {
 
     reset360: () => void;
 
-    // ✅ Imagem Obra
+    // Imagem Obra
     candidateImages: ExposureRef[];
     setCandidateImages: (arr: ExposureRef[]) => void;
 
@@ -135,7 +132,7 @@ type State = {
     imageObraMapMsg: string | null;
     setImageObraMapMsg: (msg: string | null) => void;
 
-    // ✅ Visibilidade global de grupos de camadas
+    // Visibilidade global de grupos de camadas
     droneLayersVisible: boolean;
     setDroneLayersVisible: (v: boolean) => void;
 
@@ -145,9 +142,6 @@ type State = {
     imageObraLayersVisible: boolean;
     setImageObraLayersVisible: (v: boolean) => void;
 
-    /* =========================
-       ✅ Planet mosaics (shared)
-       ========================= */
     planetMosaics: PlanetMosaicUI[];
     planetMosaicsLoading: boolean;
     planetMosaicsError: string | null;
@@ -288,9 +282,6 @@ export const useAppStore = create<State>((set, get) => ({
     imageObraLayersVisible: true,
     setImageObraLayersVisible: (v) => set({ imageObraLayersVisible: v }),
 
-    /* =========================
-       ✅ Planet mosaics
-       ========================= */
     planetMosaics: [],
     planetMosaicsLoading: false,
     planetMosaicsError: null,
@@ -304,12 +295,11 @@ export const useAppStore = create<State>((set, get) => ({
 
         const { planetMosaicsLoading, planetMosaics } = get();
         if (planetMosaicsLoading) return;
-        if (!force && planetMosaics.length) return; // ✅ já carregado
+        if (!force && planetMosaics.length) return;
 
         set({ planetMosaicsLoading: true, planetMosaicsError: null });
 
         try {
-            // ✅ usa teu apiClient atual (mantém credentials include)
             const raw: PlanetMosaicBackend[] = await apiClient.planetMosaics("", limit);
 
             const items: PlanetMosaicUI[] = (raw || []).map((p) => {
@@ -329,11 +319,10 @@ export const useAppStore = create<State>((set, get) => ({
                 planetMosaics: items,
                 planetMosaicsLoading: false,
                 planetMosaicsError: null,
-                // ✅ default no mais recente
                 planetSelectedId: items[0]?.id ?? null,
             });
         } catch (e) {
-            console.warn("Falha ao carregar mosaicos da Planet. Ativando fallback do Wayback:", e);
+            console.warn("[state] Falha ao carregar mosaicos da Planet. Ativando fallback do Wayback:", e);
             const fallbackItem: PlanetMosaicUI = {
                 id: "esri-wayback",
                 label: "Mosaico Único (Recente)",

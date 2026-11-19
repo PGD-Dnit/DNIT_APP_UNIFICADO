@@ -1,13 +1,9 @@
 // src/pages/ObraDetailsPage.tsx
-import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { consultarObra } from "../services/obraService";
-import type {
-  ConsultaObraResponse,
-  ObraRegistroBanco,
-  ObraRegistroArcgis,
-} from "../services/obraService";
 import ObraFinancialChart from "../components/ObraFinancialChart";
+import { useThemePreference } from "../hooks/useThemePreference";
+import { useObraDetails, getObraStatusClass } from "../hooks/useObraDetails";
+import { formatDatePtBr, formatCurrencyBrl } from "../utils/formatters";
 import "./ObraDetailsPage.css";
 
 export default function ObraDetailsPage() {
@@ -15,100 +11,20 @@ export default function ObraDetailsPage() {
   const id = searchParams.get("id") || "";
   const globalid = searchParams.get("globalid") || "";
 
-  const [data, setData] = useState<ConsultaObraResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState(0);
-
-  // Estado do tema (Salva no localStorage ou pega preferência do sistema)
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    const saved = localStorage.getItem("dnit_theme");
-    if (saved === "light" || saved === "dark") return saved;
-    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-  });
-
-  const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-    localStorage.setItem("dnit_theme", nextTheme);
-  };
-
-  useEffect(() => {
-    if (!id || !globalid) {
-      setError("Parâmetros 'id' ou 'globalid' ausentes na URL.");
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    console.log(
-      `%c[ObraDetailsPage] 🔍 Buscando dados da obra...\n ➔ ID Feature: ${id}\n ➔ GlobalID: ${globalid}`,
-      "color: #4ade80; font-weight: bold; font-size: 13px;"
-    );
-
-    consultarObra(id, globalid)
-      .then((res) => {
-        if (!cancelled) {
-          console.log("%c[ObraDetailsPage] 📦 Resposta recebida do backend:", "color: #38bdf8; font-weight: bold;", res);
-          setData(res);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error("Erro ao consultar obra:", err);
-          setError(err.message || "Falha ao carregar os dados da obra.");
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id, globalid]);
-
-  const formatDate = (dateStr?: string | null) => {
-    if (!dateStr) return "N/A";
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      return date.toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const formatCurrency = (val?: number | null) => {
-    if (val == null) return "R$ 0,00";
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(val);
-  };
-
-  // Todos os registros do banco (um por contrato)
-  const registrosBanco: ObraRegistroBanco[] = data?.banco?.registros ?? [];
-  const regBanco: ObraRegistroBanco | null = registrosBanco[activeTab] ?? registrosBanco[0] ?? null;
-  const regArcgis: ObraRegistroArcgis | null = data?.arcgis?.camadas?.[0]?.registros?.[0] ?? null;
-  const nomeCamada = data?.arcgis?.camadas?.[0]?.title ?? regBanco?.NomeCamada ?? "Obra";
-
-  const nomeObra = regBanco?.NomeObra || regArcgis?.nome_obra || "Detalhes da Obra";
-  const status = regBanco?.Status || regArcgis?.status || "N/A";
-
-  const getStatusClass = (statusStr: string) => {
-    const low = statusStr.toLowerCase();
-    if (low.includes("finaliza")) return "finalizada";
-    if (low.includes("andamento")) return "em_andamento";
-    if (low.includes("emergên") || low.includes("paralis")) return "emergencial";
-    return "";
-  };
+  const [theme, toggleTheme] = useThemePreference();
+  const {
+    data,
+    loading,
+    error,
+    activeTab,
+    setActiveTab,
+    registrosBanco,
+    regBanco,
+    regArcgis,
+    nomeCamada,
+    nomeObra,
+    status,
+  } = useObraDetails(id, globalid);
 
   return (
     <div className="obra-page-container" data-theme={theme}>
@@ -153,7 +69,7 @@ export default function ObraDetailsPage() {
               <div className="obra-hero-header">
                 <div className="obra-title-area">
                   <div className="obra-hero-badges">
-                    <span className={`obra-status-pill ${getStatusClass(status)}`}>
+                    <span className={`obra-status-pill ${getObraStatusClass(status)}`}>
                       <i className="fa-solid fa-circle" style={{ fontSize: 7 }} />
                       {status}
                     </span>
@@ -231,30 +147,29 @@ export default function ObraDetailsPage() {
                   <div className="obra-field-item">
                     <span className="obra-item-label">Valor Inicial</span>
                     <span className="obra-item-value monetary-val">
-                      {formatCurrency(regBanco?.ValorInicial)}
+                      {formatCurrencyBrl(regBanco?.ValorInicial)}
                     </span>
                   </div>
                   <div className="obra-field-item">
                     <span className="obra-item-label">Valor Inicial + Aditivo</span>
                     <span className="obra-item-value monetary-val">
-                      {formatCurrency(regBanco?.ValorInicialAditivo)}
+                      {formatCurrencyBrl(regBanco?.ValorInicialAditivo)}
                     </span>
                   </div>
                   <div className="obra-field-item">
                     <span className="obra-item-label">Total Reajuste</span>
                     <span className="obra-item-value monetary-val">
-                      {formatCurrency(regBanco?.ValorTotalReajuste)}
+                      {formatCurrencyBrl(regBanco?.ValorTotalReajuste)}
                     </span>
                   </div>
                   <div className="obra-field-item">
                     <span className="obra-item-label">Saldo Restante</span>
                     <span className="obra-item-value monetary-val">
-                      {formatCurrency(regBanco?.ValorSaldo)}
+                      {formatCurrencyBrl(regBanco?.ValorSaldo)}
                     </span>
                   </div>
                 </div>
 
-                {/* Gráfico Donut + Barra de Progresso */}
                 <ObraFinancialChart
                   valorInicial={regBanco?.ValorInicial}
                   valorInicialAditivo={regBanco?.ValorInicialAditivo}
@@ -263,7 +178,6 @@ export default function ObraDetailsPage() {
                 />
               </div>
 
-              {/* Card 3: Prazos e Vigência */}
               <div className="obra-card">
                 <div className="obra-card-header">
                   <i className="fa-solid fa-calendar-check" />
@@ -272,20 +186,20 @@ export default function ObraDetailsPage() {
                 <div className="obra-fields-grid">
                   <div className="obra-field-item">
                     <span className="obra-item-label">Data de Início</span>
-                    <span className="obra-item-value">{formatDate(regBanco?.DataInicio)}</span>
+                    <span className="obra-item-value">{formatDatePtBr(regBanco?.DataInicio)}</span>
                   </div>
                   <div className="obra-field-item">
                     <span className="obra-item-label">Término Vigência</span>
-                    <span className="obra-item-value">{formatDate(regBanco?.DataTerminoVigencia)}</span>
+                    <span className="obra-item-value">{formatDatePtBr(regBanco?.DataTerminoVigencia)}</span>
                   </div>
                   <div className="obra-field-item">
                     <span className="obra-item-label">Término Atualizada</span>
-                    <span className="obra-item-value">{formatDate(regBanco?.DataTerminoAtualizada)}</span>
+                    <span className="obra-item-value">{formatDatePtBr(regBanco?.DataTerminoAtualizada)}</span>
                   </div>
                   <div className="obra-field-item">
                     <span className="obra-item-label">Data de Carga / Vínculo</span>
                     <span className="obra-item-value">
-                      {formatDate(regBanco?.DataCarga || regBanco?.DataVinculo)}
+                      {formatDatePtBr(regBanco?.DataCarga || regBanco?.DataVinculo)}
                     </span>
                   </div>
                 </div>

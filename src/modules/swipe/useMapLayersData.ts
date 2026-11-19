@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CONFIG } from "../../core/config";
+import { apiRequest } from "../../core/apiClient";
 import {
     type MapImageItem,
     parseDroneServiceName,
@@ -26,9 +26,7 @@ export function useMapLayersData() {
     useEffect(() => {
         const fetchFeatures = async () => {
             try {
-                const r = await fetch(`${CONFIG.API_BASE}/features`, { credentials: "include" });
-                if (!r.ok) throw new Error("Erro ao buscar dados dos Features");
-                const data = await r.json();
+                const data = await apiRequest<any[]>("/features");
                 const featureOnly: LayerItem[] = (data || [])
                     .filter((f: any) => f.featureUrl || f.serviceUrl)
                     .map((f: any) => ({
@@ -51,9 +49,7 @@ export function useMapLayersData() {
             try {
                 setMapImageLayersLoading(true);
                 setMapImageLayersError(null);
-                const r = await fetch(`${CONFIG.API_BASE}/map-image-layers`, { credentials: "include" });
-                if (!r.ok) throw new Error(`Erro ao buscar Map Image Layers: ${r.status}`);
-                const data = await r.json();
+                const data = await apiRequest<any[]>("/map-image-layers");
                 const items = Array.isArray(data) ? data : [];
 
                 const parsedItems: MapImageItem[] = items

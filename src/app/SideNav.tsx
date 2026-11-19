@@ -35,14 +35,14 @@ export default function SideNav() {
                 <i className="fa-solid fa-street-view" />
             </button>
 
-            {/* <button
-                className={`sidenav-btn ${activeMode === "mapa_inicial" ? "is-active" : ""}`}
-                onClick={() => setActiveMode("mapa_inicial")}
-                title="Mapa Inicial"
-                aria-label="Mapa Inicial"
+            <button
+                className="sidenav-btn"
+                onClick={() => window.open("/gestao-obras-contratos", "_blank")}
+                title="Gestão de Obras e Contratos"
+                aria-label="Gestão de Obras e Contratos"
             >
-                <i className="fa-regular fa-map" />
-            </button> */}
+                <i className="fa-solid fa-file-contract" />
+            </button>
         </aside>
     );
 }

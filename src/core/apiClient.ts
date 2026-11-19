@@ -1,39 +1,65 @@
 import { CONFIG } from "./config";
+import { getAuthHeaders } from "../services/authService";
+import { useAuthStore } from "./authStore";
 
-/* =========================
-   Helpers
-   ========================= */
-async function getJson<T>(pathOrUrl: string): Promise<T> {
-  const url = /^https?:\/\//i.test(pathOrUrl)
-    ? pathOrUrl
-    : `${CONFIG.API_BASE}${pathOrUrl}`;
-
-  //const r = await fetch(url, { credentials: "include" });
-  //const r = await fetch(url);
-  const sameOrigin = url.startsWith(window.location.origin);
-  const r = await fetch(url, { credentials: sameOrigin ? "include" : "omit" });
-  const text = await r.text();
-
-  if (!r.ok) {
-    throw new Error(`GET ${url} falhou: HTTP ${r.status} — ${text.slice(0, 200)}`);
-  }
-
+function isAllowedBackendUrl(url: string): boolean {
   try {
-    return JSON.parse(text) as T;
+    const targetOrigin = new URL(url, window.location.origin).origin;
+    const apiOrigin = new URL(CONFIG.API_BASE, window.location.origin).origin;
+    return targetOrigin === window.location.origin || targetOrigin === apiOrigin;
   } catch {
-    throw new Error(`Resposta não-JSON em ${url}: ${text.slice(0, 120)}`);
+    return false;
   }
 }
 
-/* =========================
-   Tipos do seu backend (Express)
-   ========================= */
+export async function apiRequest<T>(pathOrUrl: string, init?: RequestInit): Promise<T> {
+  const isRelative = !/^https?:\/\//i.test(pathOrUrl);
+  const url = isRelative ? `${CONFIG.API_BASE}${pathOrUrl}` : pathOrUrl;
+  const isBackendUrl = isRelative || isAllowedBackendUrl(url);
+
+  const r = await fetch(url, {
+    ...init,
+    credentials: isBackendUrl ? "include" : "omit",
+    headers: {
+      ...(isBackendUrl ? getAuthHeaders() : {}),
+      ...(init?.headers || {}),
+    },
+  });
+
+  const text = await r.text();
+  let data: Record<string, any> | null = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    // resposta não-JSON
+  }
+
+  if (!r.ok) {
+    if (isBackendUrl && r.status === 401) {
+      useAuthStore.getState().handleUnauthorized("Sua sessão expirou. Faça login novamente.");
+    }
+    const msg =
+      data?.erro ||
+      data?.error ||
+      data?.mensagem ||
+      text.slice(0, 200) ||
+      `Erro HTTP ${r.status} em ${url}`;
+    throw new Error(msg);
+  }
+
+  if (data === null && text.trim().length > 0) {
+    throw new Error(`Resposta não-JSON em ${url}: ${text.slice(0, 120)}`);
+  }
+
+  return data as T;
+}
+
 export type PlanetMosaic = {
   id: string;
   title: string;
   format: string;
-  tileUrl: string;   // template do seu proxy (ou WMTS->XYZ já pronto)
-  captured?: string; // "YYYY-MM"
+  tileUrl: string;
+  captured?: string;
   bbox?: [number, number, number, number];
 };
 
@@ -57,9 +83,6 @@ export type OrientedItem = {
   thumbnailUrl?: string;
 };
 
-/* =========================
-   Attachments (ArcGIS FeatureServer)
-   ========================= */
 export type AttachmentInfo = {
   id: number;
   name?: string;
@@ -72,8 +95,7 @@ export async function listAttachments(
   objectId: number
 ): Promise<AttachmentInfo[]> {
   const url = `${layerUrl}/${objectId}/attachments?f=json`;
-  const data = await getJson<any>(url);
-
+  const data = await apiRequest<any>(url);
   const infos = Array.isArray(data?.attachmentInfos) ? data.attachmentInfos : [];
 
   return infos
@@ -108,8 +130,7 @@ export async function listAttachmentsWithMeta(
   objectId: number
 ): Promise<AttachmentInfoEx[]> {
   const url = `${layerUrl}/${objectId}/attachments?f=json&returnMetadata=true`;
-  const data = await getJson<any>(url);
-
+  const data = await apiRequest<any>(url);
   const infos = Array.isArray(data?.attachmentInfos) ? data.attachmentInfos : [];
 
   return infos
@@ -124,31 +145,22 @@ export async function listAttachmentsWithMeta(
     .filter((a: AttachmentInfoEx) => Number.isFinite(a.id));
 }
 
-/* =========================
-   Client principal (seu Express)
-   ========================= */
 export const apiClient = {
-  health: () => getJson(`/health`),
+  health: () => apiRequest(`/health`),
 
   planetMosaics: (q = "", limit = 200) =>
-    getJson<PlanetMosaic[]>(
+    apiRequest<PlanetMosaic[]>(
       `/planet/mosaics?q=${encodeURIComponent(q)}&limit=${limit}`
     ),
 
-  wayback: (limit = 200) => getJson<WaybackRelease[]>(`/wayback?limit=${limit}`),
+  wayback: (limit = 200) => apiRequest<WaybackRelease[]>(`/wayback?limit=${limit}`),
 
   orientedImagery: (limit = 50) =>
-    getJson<OrientedItem[]>(`/oriented-imagery?limit=${limit}`),
+    apiRequest<OrientedItem[]>(`/oriented-imagery?limit=${limit}`),
 
-  features: (limit = 50) => getJson<any[]>(`/features?limit=${limit}`),
+  features: (limit = 50) => apiRequest<any[]>(`/features?limit=${limit}`),
 };
 
-/* =========================
-   ✅ ADIÇÃO para o store (Opção B)
-   =========================
-   O store só precisa de uma função simples para obter os mosaics.
-   Você pode usar apiClient.planetMosaics direto, mas assim fica mais explícito.
-*/
 export async function getPlanetMosaicsRaw(limit = 200): Promise<PlanetMosaic[]> {
   return apiClient.planetMosaics("", limit);
 }

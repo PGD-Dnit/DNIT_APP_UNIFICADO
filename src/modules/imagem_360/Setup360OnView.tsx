@@ -4,7 +4,7 @@ import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import Handles from "@arcgis/core/core/Handles";
 import { useAppStore } from "../../core/store";
 import type { ExposureRef } from "../../core/types";
-import { CONFIG } from "../../core/config";
+import { apiRequest } from "../../core/apiClient";
 
 type OrientedItem = {
     id: string;                // portal item id
@@ -48,19 +48,8 @@ function makeMsgId() {
 }
 
 async function fetchOriented(): Promise<OrientedItem[]> {
-    const r = await fetch(`${CONFIG.API_BASE}/oriented-imagery`, { credentials: "include" });
-    const raw = await r.text();
-
-    if (!r.ok) throw new Error(`GET /oriented-imagery falhou: HTTP ${r.status} — ${raw.slice(0, 200)}`);
-
-    let data: any;
-    try {
-        data = JSON.parse(raw);
-    } catch {
-        throw new Error(`Resposta não-JSON em /oriented-imagery: ${raw.slice(0, 120)}`);
-    }
-
-    return Array.isArray(data) ? (data as OrientedItem[]) : [];
+    const data = await apiRequest<OrientedItem[]>("/oriented-imagery");
+    return Array.isArray(data) ? data : [];
 }
 
 export function Setup360OnView(view: MapView) {
@@ -108,9 +97,11 @@ export function Setup360OnView(view: MapView) {
                     id,
                     title: def.title,
                     outFields: ["*"],
+                    minScale: 0,
+                    maxScale: 0,
                 });
 
-                view.map?.add(layer);
+                view.map?.add(layer, 9999);
                 created.push(layer);
                 oiLayers.push(layer);
 
@@ -137,7 +128,7 @@ export function Setup360OnView(view: MapView) {
                         result.features.forEach(f => {
                             const dateVal = f.attributes?.acquisitiondate ?? f.attributes?.acquisitionDate ?? f.attributes?.AcquisitionDate;
                             let dateStr: string | null = null;
-                            
+
                             if (typeof dateVal === "string" && /^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
                                 // Se já é uma string no formato YYYY-MM-DD, usamos diretamente
                                 // para não sofrer alteração de fuso horário local ao converter para Date
@@ -148,10 +139,10 @@ export function Setup360OnView(view: MapView) {
                                     // Para timestamps UTC de meia-noite, usamos os métodos getUTC()
                                     // garantindo que a data permaneça no dia original
                                     const d = new Date(ms);
-                                    dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+                                    dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
                                 }
                             }
-                            
+
                             if (dateStr) {
                                 datesSet.add(dateStr);
                             }
@@ -174,8 +165,18 @@ export function Setup360OnView(view: MapView) {
                 if (disposed) return;
 
                 oiLayers.forEach(layer => {
-                    const fieldObj = layer.fields?.find(f => f.name.toLowerCase() === "acquisitiondate");
-                    const fieldName = fieldObj ? fieldObj.name : "acquisitionDate"; // fallback
+                    const knownDateNames = ["acquisitiondate", "data", "data_medicao", "created_date", "date"];
+                    const fieldObj =
+                        layer.fields?.find(f => knownDateNames.includes(f.name.toLowerCase())) ??
+                        layer.fields?.find(f => f.type === "date");
+
+                    if (!fieldObj) {
+                        layer.definitionExpression = "1=1";
+                        return;
+                    }
+
+                    const fieldName = fieldObj.name;
+                    const isStringField = fieldObj.type === "string";
 
                     let expr = "1=1";
                     if (filter.start || filter.end) {
@@ -186,6 +187,9 @@ export function Setup360OnView(view: MapView) {
                             const y = d.getUTCFullYear();
                             const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
                             const day = String(d.getUTCDate()).padStart(2, '0');
+                            if (isStringField) {
+                                return `'${y}-${mo}-${day}'`;
+                            }
                             const h = String(d.getUTCHours()).padStart(2, '0');
                             const m = String(d.getUTCMinutes()).padStart(2, '0');
                             const s = String(d.getUTCSeconds()).padStart(2, '0');
@@ -355,7 +359,7 @@ export function Setup360OnView(view: MapView) {
                 return;
             }
 
-            // ✅ hitTest em TODAS as camadas oriented carregadas
+            // ✅ hitTest em TODAS as camadas oriented carregadas (/oriented-imagery -> oi:*)
             const hit = await view.hitTest(ev, { include: oiLayers });
 
             const graphics = hit.results
@@ -364,34 +368,6 @@ export function Setup360OnView(view: MapView) {
                     const lyr: any = g?.layer;
                     return lyr && lyr.type === "feature" && String(lyr.id || "").startsWith("oi:") && g.attributes;
                 }) as __esri.Graphic[];
-
-            // Se for feição de acompanhamento de obra, não processa como 360
-            const isObraAcompanhamento = graphics.some((g) => {
-                const layer = g.layer as any;
-                const attrs = g.attributes || {};
-                const layerTags: string[] = Array.isArray(layer?.portalItem?.tags)
-                    ? layer.portalItem.tags
-                    : Array.isArray(layer?.tags)
-                    ? layer.tags
-                    : Array.isArray(attrs?.tags)
-                    ? attrs.tags
-                    : typeof layer?.tags === "string"
-                    ? layer.tags.split(",")
-                    : typeof attrs?.tags === "string"
-                    ? attrs.tags.split(",")
-                    : [];
-
-                return (
-                    layerTags.some((tag) => String(tag).trim().toLowerCase() === "obras_acompanhamento") ||
-                    String(layer?.title || "").toLowerCase().includes("obras_acompanhamento") ||
-                    String(layer?.url || "").toLowerCase().includes("obras_acompanhamento")
-                );
-            });
-
-            if (isObraAcompanhamento) {
-                finalize(false);
-                return;
-            }
 
             if (!graphics.length) {
                 setCandidateExposures([]);

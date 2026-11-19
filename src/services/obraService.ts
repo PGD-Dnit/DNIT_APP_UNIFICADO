@@ -1,5 +1,5 @@
 // src/services/obraService.ts
-import { CONFIG } from "../core/config";
+import { apiRequest } from "../core/apiClient";
 
 export interface ObraRegistroBanco {
   GlobalId: string;
@@ -73,20 +73,7 @@ export async function consultarObra(
   id: string,
   globalid: string
 ): Promise<ConsultaObraResponse> {
-  const url = `${CONFIG.API_BASE}/features-obras/consultaObra?id=${encodeURIComponent(
-    id
-  )}&globalid=${encodeURIComponent(globalid)}`;
-
-  const response = await fetch(url, {
-    credentials: url.startsWith(window.location.origin) ? "include" : "omit",
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(
-      `Erro ao consultar obra (${response.status}): ${text.slice(0, 150)}`
-    );
-  }
-
-  return (await response.json()) as ConsultaObraResponse;
+  return apiRequest<ConsultaObraResponse>(
+    `/features-obras/consultaObra?id=${encodeURIComponent(id)}&globalid=${encodeURIComponent(globalid)}`
+  );
 }

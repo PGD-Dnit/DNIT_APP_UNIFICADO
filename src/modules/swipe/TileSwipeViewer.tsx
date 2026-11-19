@@ -45,25 +45,21 @@ export default function TileSwipeViewer({
 
   const setLastViewpoint = useAppStore((s) => s.setLastViewpoint);
 
-  // 🗓️ Painel temporal — estado no store para persistir entre trocas de modo
+  // Painel temporal — estado no store para persistir entre trocas de modo
   const showTemporalPanel = useAppStore((s) => s.showTemporalPanel);
   const setShowTemporalPanel = useAppStore((s) => s.setShowTemporalPanel);
 
   const [selectedSidePanel, setSelectedSidePanel] = useState<"left" | "right">("left");
 
-  // 🌍 URLs ativas das camadas
   const [currentLeft, setCurrentLeft] = useState(leftTileUrl);
   const [currentRight, setCurrentRight] = useState(rightTileUrl);
 
-  // 🏷️ Labels exibidos nos painéis flutuantes
   const [labelLeft, setLabelLeft] = useState(titleLeft);
   const [labelRight, setLabelRight] = useState(titleRight);
 
-  // 📆 Seleção persistente de mês/ano (mantém ativo mesmo ao fechar)
   const [, setSelectedLeft] = useState<{ year: number; month: number } | null>(null);
   const [, setSelectedRight] = useState<{ year: number; month: number } | null>(null);
 
-  /** 🔧 Inicializa mapa e Swipe */
   useEffect(() => {
     if (!mapDiv.current) return;
 
@@ -97,7 +93,7 @@ export default function TileSwipeViewer({
     });
     viewRef.current = view;
 
-    // 🔍 Widget de busca
+    // Widget de busca
     const searchWidget = new Search({
       view,
       includeDefaultSources: true,
@@ -107,11 +103,11 @@ export default function TileSwipeViewer({
     });
     view.ui.add(searchWidget, { position: "top-right", index: 0 });
 
-    // 🧭 Bússola
+    // Bússola
     const compass = new Compass({ view });
     view.ui.add(compass, "top-right");
 
-    // 🗺️ Camadas
+    // Camadas
     const leftLayer = new WebTileLayer({
       urlTemplate: currentLeft || "",
       title: "Mosaico Esquerdo",
@@ -128,7 +124,7 @@ export default function TileSwipeViewer({
     rightLayerRef.current = rightLayer;
     map.addMany([leftLayer, rightLayer]);
 
-    // 👁️ Swipe
+    // Swipe
     const swipe = new Swipe({
       leadingLayers: [leftLayer],
       trailingLayers: [rightLayer],
@@ -216,24 +212,20 @@ export default function TileSwipeViewer({
   --------------------------------------------- */
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      {/* 🗺️ Mapa */}
       <div ref={mapDiv} style={{ width: "100%", height: "100%" }} />
 
-      {/* 📍 Label esquerdo (Badge) */}
       <div className="calendario-botao-esquerdo" title="Data do Mosaico">
         <div className="calendario-botao">
           <span>{labelLeft}</span>
         </div>
       </div>
 
-      {/* 📍 Label direito (Badge) */}
       <div className="calendario-botao-direito" title="Data do Mosaico">
         <div className="calendario-botao">
           <span>{labelRight}</span>
         </div>
       </div>
 
-      {/* 🛠️ Barra de ferramentas */}
       <MapToolbar showLayersBtn={true} />
 
       {/* Painel temporal — posicionamento independente do botão */}

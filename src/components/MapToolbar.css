@@ -87,6 +87,20 @@
   font-size: 12px;
 }
 
+.map-toolbar-fa-btn {
+  border: 1px solid rgba(0, 0, 0, 0.171);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.map-toolbar-fa-btn i {
+  font-size: 18px;
+}
+
+.map-toolbar-logout-btn:hover {
+  color: #dc2626 !important;
+  background: rgba(220, 38, 38, 0.1) !important;
+}
+
 .map-toolbar-btn:hover {
   background: #edf2f7;
   color: #1a202c;

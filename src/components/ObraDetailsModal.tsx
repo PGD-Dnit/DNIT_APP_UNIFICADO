@@ -1,65 +1,33 @@
 // src/components/ObraDetailsModal.tsx
-import React, { useEffect, useState } from "react";
-import { consultarObra } from "../services/obraService";
-import type {
-  ConsultaObraResponse,
-  ObraRegistroBanco,
-  ObraRegistroArcgis,
-} from "../services/obraService";
+import React, { useEffect } from "react";
 import ObraFinancialChart from "./ObraFinancialChart";
+import { useThemePreference } from "../hooks/useThemePreference";
+import { useObraDetails, getObraStatusClass } from "../hooks/useObraDetails";
+import { formatDatePtBr, formatCurrencyBrl } from "../utils/formatters";
 import "./ObraDetailsModal.css";
 
 interface Props {
-  id: string; // Feature ID / Layer ID
-  globalid: string; // Obra GlobalID
+  id: string;
+  globalid: string;
   onClose: () => void;
 }
 
 export const ObraDetailsModal: React.FC<Props> = ({ id, globalid, onClose }) => {
-  const [data, setData] = useState<ConsultaObraResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState(0);
+  const [theme, toggleTheme] = useThemePreference();
+  const {
+    data,
+    loading,
+    error,
+    activeTab,
+    setActiveTab,
+    registrosBanco,
+    regBanco,
+    regArcgis,
+    nomeCamada,
+    nomeObra,
+    status,
+  } = useObraDetails(id, globalid);
 
-  // Estado do tema do Modal (Respeita preferência do localStorage ou sistema)
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    const saved = localStorage.getItem("dnit_theme");
-    if (saved === "light" || saved === "dark") return saved;
-    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-  });
-
-  const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-    localStorage.setItem("dnit_theme", nextTheme);
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    consultarObra(id, globalid)
-      .then((res) => {
-        if (!cancelled) {
-          setData(res);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error("Erro ao consultar obra:", err);
-          setError(err.message || "Falha ao carregar detalhes da obra.");
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id, globalid]);
-
-  // Tecla ESC fecha modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -68,55 +36,13 @@ export const ObraDetailsModal: React.FC<Props> = ({ id, globalid, onClose }) => 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  // Formatadores de data e moeda
-  const formatDate = (dateStr?: string | null) => {
-    if (!dateStr) return "N/A";
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      return date.toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const formatCurrency = (val?: number | null) => {
-    if (val == null) return "R$ 0,00";
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(val);
-  };
-
-  // Registros do Banco e do ArcGIS
-  const registrosBanco: ObraRegistroBanco[] = data?.banco?.registros ?? [];
-  const regBanco: ObraRegistroBanco | null = registrosBanco[activeTab] ?? registrosBanco[0] ?? null;
-  const regArcgis: ObraRegistroArcgis | null = data?.arcgis?.camadas?.[0]?.registros?.[0] ?? null;
-  const nomeCamada = data?.arcgis?.camadas?.[0]?.title ?? regBanco?.NomeCamada ?? "Obra";
-
-  const nomeObra = regBanco?.NomeObra || regArcgis?.nome_obra || "Detalhes da Obra";
-  const status = regBanco?.Status || regArcgis?.status || "N/A";
-
-  const getStatusClass = (statusStr: string) => {
-    const low = statusStr.toLowerCase();
-    if (low.includes("finaliza")) return "finalizada";
-    if (low.includes("andamento")) return "em_andamento";
-    if (low.includes("emergên") || low.includes("paralis")) return "emergencial";
-    return "";
-  };
-
   return (
     <div className="obra-modal-overlay" data-theme={theme} onClick={onClose}>
       <div className="obra-modal-card" data-theme={theme} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div className="obra-modal-header">
           <div className="obra-header-title-group">
             <div className="obra-modal-badge-row">
-              <span className={`obra-status-badge ${getStatusClass(status)}`}>
+              <span className={`obra-status-badge ${getObraStatusClass(status)}`}>
                 <i className="fa-solid fa-circle" style={{ fontSize: 8 }} />
                 {status}
               </span>
@@ -220,23 +146,22 @@ export const ObraDetailsModal: React.FC<Props> = ({ id, globalid, onClose }) => 
               <div className="obra-grid">
                 <div className="obra-field">
                   <span className="obra-label">Valor Inicial</span>
-                  <span className="obra-value monetary">{formatCurrency(regBanco?.ValorInicial)}</span>
+                  <span className="obra-value monetary">{formatCurrencyBrl(regBanco?.ValorInicial)}</span>
                 </div>
                 <div className="obra-field">
                   <span className="obra-label">Valor Inicial + Aditivo</span>
-                  <span className="obra-value monetary">{formatCurrency(regBanco?.ValorInicialAditivo)}</span>
+                  <span className="obra-value monetary">{formatCurrencyBrl(regBanco?.ValorInicialAditivo)}</span>
                 </div>
                 <div className="obra-field">
                   <span className="obra-label">Reajuste Total</span>
-                  <span className="obra-value monetary">{formatCurrency(regBanco?.ValorTotalReajuste)}</span>
+                  <span className="obra-value monetary">{formatCurrencyBrl(regBanco?.ValorTotalReajuste)}</span>
                 </div>
                 <div className="obra-field">
                   <span className="obra-label">Valor Saldo</span>
-                  <span className="obra-value monetary">{formatCurrency(regBanco?.ValorSaldo)}</span>
+                  <span className="obra-value monetary">{formatCurrencyBrl(regBanco?.ValorSaldo)}</span>
                 </div>
               </div>
 
-              {/* Gráfico Donut + Barra de Progresso */}
               <ObraFinancialChart
                 valorInicial={regBanco?.ValorInicial}
                 valorInicialAditivo={regBanco?.ValorInicialAditivo}
@@ -245,7 +170,6 @@ export const ObraDetailsModal: React.FC<Props> = ({ id, globalid, onClose }) => 
               />
             </div>
 
-            {/* Seção 3: Datas & Prazos */}
             <div className="obra-section-card">
               <div className="obra-section-header">
                 <i className="fa-solid fa-calendar-days" />
@@ -254,20 +178,20 @@ export const ObraDetailsModal: React.FC<Props> = ({ id, globalid, onClose }) => 
               <div className="obra-grid">
                 <div className="obra-field">
                   <span className="obra-label">Data de Início</span>
-                  <span className="obra-value">{formatDate(regBanco?.DataInicio)}</span>
+                  <span className="obra-value">{formatDatePtBr(regBanco?.DataInicio)}</span>
                 </div>
                 <div className="obra-field">
                   <span className="obra-label">Término Vigência</span>
-                  <span className="obra-value">{formatDate(regBanco?.DataTerminoVigencia)}</span>
+                  <span className="obra-value">{formatDatePtBr(regBanco?.DataTerminoVigencia)}</span>
                 </div>
                 <div className="obra-field">
                   <span className="obra-label">Término Atualizada</span>
-                  <span className="obra-value">{formatDate(regBanco?.DataTerminoAtualizada)}</span>
+                  <span className="obra-value">{formatDatePtBr(regBanco?.DataTerminoAtualizada)}</span>
                 </div>
                 <div className="obra-field">
                   <span className="obra-label">Data de Carga / Vínculo</span>
                   <span className="obra-value">
-                    {formatDate(regBanco?.DataCarga || regBanco?.DataVinculo)}
+                    {formatDatePtBr(regBanco?.DataCarga || regBanco?.DataVinculo)}
                   </span>
                 </div>
               </div>

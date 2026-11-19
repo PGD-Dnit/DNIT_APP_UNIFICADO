@@ -8,6 +8,7 @@ import TemporalLayersPanel from "../swipe/TemporalLayersPanel";
 import "./MapaInicialViewer.css";
 import { buildPlanetTileUrl } from "../../core/mosaicUtils";
 import { useAppStore } from "../../core/store";
+import { formatMosaicDateLabel } from "../../utils/formatters";
 import MapToolbar from "../../components/MapToolbar";
 
 interface Props {
@@ -131,19 +132,7 @@ export default function MapaInicialViewer({
     const handleMosaicApply = (_side: "left" | "right", mosaic: any) => {
         if (!mosaic?.id) return;
         const url = buildPlanetTileUrl(mosaic.id);
-
-        let formatted = mosaic.when || mosaic.label || "Sem data";
-        const match3 = String(formatted).match(/(\d{4})[-_/\.](\d{2})[-_/\.](\d{2})/);
-        const match2 = String(formatted).match(/(\d{4})[-_/\.](\d{2})/);
-
-        if (match3) {
-            formatted = `${match3[3]}/${match3[2]}/${match3[1]}`;
-        } else if (match2) {
-            const y = parseInt(match2[1], 10);
-            const mo = parseInt(match2[2], 10);
-            const endD = String(new Date(y, mo, 0).getDate()).padStart(2, "0");
-            formatted = `${endD}/${match2[2]}/${match2[1]}`;
-        }
+        const formatted = formatMosaicDateLabel(mosaic.when || mosaic.label, "Sem data");
 
         setCurrentTileUrl(url);
         setLabel(formatted);
@@ -165,7 +154,7 @@ export default function MapaInicialViewer({
                 </div>
             </div>
 
-            {/* 🛠️ Barra de ferramentas (sem botão de camadas neste viewer) */}
+            {/* Barra de ferramentas (sem botão de camadas neste viewer) */}
             <MapToolbar showLayersBtn={false} />
 
             {/* Painel temporal */}

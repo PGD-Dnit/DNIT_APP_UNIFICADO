@@ -1,5 +1,5 @@
 // src/modules/imagem_obra/MiniMapImageView.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import EsriMap from "@arcgis/core/Map";
 import MapView from "@arcgis/core/views/MapView";
@@ -46,8 +46,6 @@ export default function MiniMapImageView({ defaultZoom = 18 }: Props) {
 
     const clickGraphicRef = useRef<__esri.Graphic | null>(null);
 
-    const pointFetchOnce = useMemo(() => ({ done: false }), []);
-
     useEffect(() => {
         if (!divRef.current) return;
         if (viewRef.current) return;
@@ -70,20 +68,16 @@ export default function MiniMapImageView({ defaultZoom = 18 }: Props) {
         let cancelled = false;
 
         const loadPointLayers = async () => {
-            if (pointFetchOnce.done) return;
-            pointFetchOnce.done = true;
-
             try {
                 const items = await fetchPointLayers();
                 if (cancelled) return;
 
                 const defs = (items || [])
-                    .filter((it) => it?.serviceUrl)
-                    .filter((it) => String(it.access || "").toLowerCase() === "public")
+                    .filter((it) => it?.serviceUrl || it?.featureUrl || (it as any)?.url)
                     .map((it) => ({
                         id: it.id,
                         title: it.title ?? "Imagem da Obra",
-                        url0: ensureLayer0(String(it.serviceUrl)),
+                        url0: ensureLayer0(String(it.serviceUrl || it.featureUrl || (it as any)?.url)),
                     }));
 
                 for (const def of defs) {

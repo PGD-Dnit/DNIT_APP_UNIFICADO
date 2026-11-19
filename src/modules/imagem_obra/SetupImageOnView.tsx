@@ -38,13 +38,11 @@ export function SetupImageOnView(view: MapView) {
             if (disposed) return;
 
             const defs = (items || [])
-                .filter((it) => it?.serviceUrl)
-                // se quiser garantir public mesmo quando backend vacila:
-                .filter((it) => String(it.access || "").toLowerCase() === "public")
+                .filter((it) => it?.serviceUrl || it?.featureUrl || (it as any)?.url)
                 .map((it) => ({
                     id: it.id,
                     title: it.title ?? "Imagem da Obra",
-                    url0: ensureLayer0(String(it.serviceUrl)),
+                    url0: ensureLayer0(String(it.serviceUrl || it.featureUrl || (it as any)?.url)),
                 }));
 
             for (const def of defs) {
@@ -62,16 +60,25 @@ export function SetupImageOnView(view: MapView) {
                     id,
                     title: def.title,
                     outFields: ["*"],
+                    minScale: 0,
+                    maxScale: 0,
                 });
 
-                view.map?.add(layer);
+                view.map?.add(layer, 9999);
                 created.push(layer);
                 imgLayers.push(layer);
 
                 // não bloquear inicialização se alguma falhar
-                layer.load().catch((e) => {
-                    console.warn(`[SetupImage] layer load falhou: ${def.title}`, e);
-                });
+                layer
+                    .load()
+                    .then(() => {
+                        console.info(
+                            `[arcgis] Camada carregada no mapa: "${def.title}" (${def.url0}) | visible=${layer.visible}`
+                        );
+                    })
+                    .catch((e) => {
+                        console.error(`[arcgis] Falha ao carregar camada "${def.title}" (${def.url0}):`, e);
+                    });
             }
 
             initDone = true;
@@ -88,12 +95,12 @@ export function SetupImageOnView(view: MapView) {
                         query.where = "1=1";
                         query.returnGeometry = false;
                         const result = await lyr.queryFeatures(query);
-                        
+
                         result.features.forEach((f) => {
                             // Mapeia os campos possíveis (incluindo "data" da camada Obras)
                             const dateVal = f.attributes?.acquisitiondate ?? f.attributes?.acquisitionDate ?? f.attributes?.AcquisitionDate ?? f.attributes?.data ?? f.attributes?.data_medicao ?? f.attributes?.created_date;
                             let dateStr: string | null = null;
-                            
+
                             if (typeof dateVal === "string" && /^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
                                 // Se já é uma string no formato YYYY-MM-DD, usamos diretamente
                                 // para não sofrer alteração de fuso horário local ao converter para Date
@@ -104,10 +111,10 @@ export function SetupImageOnView(view: MapView) {
                                     // Para timestamps UTC de meia-noite, usamos os métodos getUTC()
                                     // garantindo que a data permaneça no dia original
                                     const d = new Date(ms);
-                                    dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+                                    dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
                                 }
                             }
-                            
+
                             if (dateStr) {
                                 datesSet.add(dateStr);
                             }
@@ -124,49 +131,54 @@ export function SetupImageOnView(view: MapView) {
 
             const applyFilter = async (filter: { start: number | null, end: number | null }) => {
                 if (disposed) return;
-                
+
                 // Ensure layers are loaded so we can inspect layer.fields
-                await Promise.all(imgLayers.map(lyr => lyr.load()));
+                await Promise.allSettled(imgLayers.map(lyr => lyr.load()));
                 if (disposed) return;
 
                 imgLayers.forEach(layer => {
-                    // Procura o campo correto dinamicamente entre as opções conhecidas
-                    const fieldObj = layer.fields?.find(f => {
-                        const low = f.name.toLowerCase();
-                        return low === "acquisitiondate" || low === "data" || low === "data_medicao";
-                    });
-                    
-                    const fieldName = fieldObj ? fieldObj.name : (layer.title?.toLowerCase().includes("obras") ? "data" : "acquisitionDate");
-                    const isStringField = fieldObj ? fieldObj.type === "string" : false;
-
-                    let expr = "1=1";
-                    if (filter.start || filter.end) {
-                        const conditions = [];
-                        
-                        const formatSqlValue = (ms: number, isEnd: boolean) => {
-                            const d = new Date(ms);
-                            const y = d.getUTCFullYear();
-                            const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
-                            const day = String(d.getUTCDate()).padStart(2, '0');
-                            
-                            if (isStringField) {
-                                // Para colunas do tipo String (ex: "2026-02-26")
-                                return `'${y}-${mo}-${day}'`;
-                            }
-                            
-                            // Para colunas do tipo Date
-                            const h = isEnd ? "23" : "00";
-                            const m = isEnd ? "59" : "00";
-                            const s = isEnd ? "59" : "00";
-                            return `TIMESTAMP '${y}-${mo}-${day} ${h}:${m}:${s}'`;
-                        };
-
-                        if (filter.start) conditions.push(`${fieldName} >= ${formatSqlValue(filter.start, false)}`);
-                        if (filter.end) conditions.push(`${fieldName} <= ${formatSqlValue(filter.end, true)}`);
-                        expr = conditions.join(" AND ");
+                    if (!filter.start && !filter.end) {
+                        layer.definitionExpression = null as any;
+                        return;
                     }
-                    
-                    layer.definitionExpression = expr;
+
+                    // Procura o campo de data dinamicamente nos fields da camada (sem fallback hardcoded)
+                    const knownDateNames = ["acquisitiondate", "data", "data_medicao", "data_foto", "created_date", "date"];
+                    const fieldObj =
+                        layer.fields?.find(f => knownDateNames.includes(f.name.toLowerCase())) ??
+                        layer.fields?.find(f => f.type === "date");
+
+                    if (!fieldObj) {
+                        layer.definitionExpression = null as any;
+                        return;
+                    }
+
+                    const fieldName = fieldObj.name;
+                    const isStringField = fieldObj.type === "string";
+
+                    const conditions = [];
+
+                    const formatSqlValue = (ms: number, isEnd: boolean) => {
+                        const d = new Date(ms);
+                        const y = d.getUTCFullYear();
+                        const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+                        const day = String(d.getUTCDate()).padStart(2, '0');
+
+                        if (isStringField) {
+                            // Para colunas do tipo String (ex: "2026-02-26")
+                            return `'${y}-${mo}-${day}'`;
+                        }
+
+                        // Para colunas do tipo Date
+                        const h = isEnd ? "23" : "00";
+                        const m = isEnd ? "59" : "00";
+                        const s = isEnd ? "59" : "00";
+                        return `TIMESTAMP '${y}-${mo}-${day} ${h}:${m}:${s}'`;
+                    };
+
+                    if (filter.start) conditions.push(`${fieldName} >= ${formatSqlValue(filter.start, false)}`);
+                    if (filter.end) conditions.push(`${fieldName} <= ${formatSqlValue(filter.end, true)}`);
+                    layer.definitionExpression = conditions.join(" AND ");
                 });
             };
 
@@ -325,41 +337,9 @@ export function SetupImageOnView(view: MapView) {
                 return;
             }
 
-            // ── Passo 1: hitTest para confirmar presença de feature no ponto ──
+            // ── Passo 1: hitTest para confirmar presença de feature nas camadas /point-layer (io:*) ──
             const hit = await view.hitTest(ev, { include: imgLayers });
             const hitGraphics = extractExposureGraphics(hit.results, "io:");
-
-            // Se for uma feição de obras (acompanhamento/csa/consultaObra), não processa como foto de obra
-            const isObraFeature = hitGraphics.some((g) => {
-                const layer = g.layer as any;
-                const attrs = g.attributes || {};
-                const layerTags: string[] = Array.isArray(layer?.portalItem?.tags)
-                    ? layer.portalItem.tags
-                    : Array.isArray(layer?.tags)
-                    ? layer.tags
-                    : Array.isArray(attrs?.tags)
-                    ? attrs.tags
-                    : typeof layer?.tags === "string"
-                    ? layer.tags.split(",")
-                    : typeof attrs?.tags === "string"
-                    ? attrs.tags.split(",")
-                    : [];
-
-                const hasObraTagOrTitle =
-                    layerTags.some((tag) => String(tag).trim().toLowerCase().includes("obra")) ||
-                    String(layer?.title || "").toLowerCase().includes("obra") ||
-                    String(layer?.url || "").toLowerCase().includes("obra");
-
-                const hasObraAttr =
-                    !!(attrs.globalid || attrs.GlobalId || attrs.GLOBALID || attrs.nome_obra || attrs.NomeObra);
-
-                return hasObraTagOrTitle || hasObraAttr;
-            });
-
-            if (isObraFeature) {
-                finalize(false);
-                return;
-            }
 
             if (!hitGraphics.length) {
                 setCandidateImages([]);
@@ -381,12 +361,6 @@ export function SetupImageOnView(view: MapView) {
 
             // Fallback: se queryFeatures falhou
             if (uniq.size === 0) {
-                // Se a feição for uma obra, encerra graciosamente sem emitir warning ou criar foto fantasma
-                if (isObraFeature) {
-                    finalize(false);
-                    return;
-                }
-
                 console.warn("[SetupImage] queryFeatures retornou vazio — usando fallback do hitTest");
                 const fallback = hitGraphics;
                 for (const g of fallback) {
@@ -394,7 +368,7 @@ export function SetupImageOnView(view: MapView) {
                     const oidField = lyr.objectIdField;
                     const objectId = safeNum(g.attributes?.[oidField]);
                     if (objectId == null) continue;
-                    const acqRaw = g.attributes?.acquisitiondate ?? g.attributes?.acquisitionDate ?? g.attributes?.AcquisitionDate ?? null;
+                    const acqRaw = g.attributes?.acquisitiondate ?? g.attributes?.acquisitionDate ?? g.attributes?.AcquisitionDate ?? g.attributes?.data ?? null;
                     const acqMs = toEpochMs(acqRaw);
                     const layerUrl0 = ensureLayer0(lyr.url);
                     uniq.set(`${layerUrl0}::${objectId}`, {

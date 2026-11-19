@@ -1,5 +1,5 @@
 // src/modules/imagem_360/MiniMap360View.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import EsriMap from "@arcgis/core/Map";
 import MapView from "@arcgis/core/views/MapView";
@@ -12,6 +12,7 @@ import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import { useAppStore } from "../../core/store";
 import type { ExposureRef } from "../../core/types";
 import { CONFIG } from "../../core/config";
+import { getAuthHeaders } from "../../services/authService";
 import "./MiniMap360View.css";
 
 type Props = {
@@ -58,6 +59,7 @@ function ensureLayer0(url: string | null | undefined) {
 async function fetchOrientedImagery(): Promise<OrientedItem[]> {
     const r = await fetch(`${CONFIG.API_BASE}/oriented-imagery`, {
         credentials: "include",
+        headers: { ...getAuthHeaders() },
     });
 
     const raw = await r.text();
@@ -97,9 +99,6 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
     // marcador do último clique (só visual)
     const clickGraphicRef = useRef<__esri.Graphic | null>(null);
 
-    // apenas pra forçar 1 fetch por mount
-    const orientedFetchOnce = useMemo(() => ({ done: false }), []);
-
     // =========================
     // 1) Cria o mini MapView + carrega camadas /oriented-imagery
     // =========================
@@ -126,9 +125,6 @@ export default function MiniMap360View({ defaultZoom = 18 }: Props) {
 
         // ✅ carrega TODAS as camadas oriented imagery no mini
         const loadOrientedLayers = async () => {
-            if (orientedFetchOnce.done) return;
-            orientedFetchOnce.done = true;
-
             try {
                 const items = await fetchOrientedImagery();
                 if (cancelled) return;

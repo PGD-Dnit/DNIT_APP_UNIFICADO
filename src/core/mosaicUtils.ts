@@ -31,7 +31,7 @@ export function buildPlanetTileUrl(mosaicId: string): string {
   if (mosaicId === "esri-wayback") {
     return buildWaybackTileUrl();
   }
-  return `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${mosaicId}`;
+  return `${CONFIG.API_BASE}/planet/tiles/{z}/{x}/{y}.png?mosaic=${encodeURIComponent(mosaicId)}`;
 }
 
 /**

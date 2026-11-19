@@ -22,6 +22,8 @@ import {
 } from "../../core/droneUtils";
 import { useMapLayersData } from "./useMapLayersData";
 import { useDroneGroupAutoSelect } from "./useDroneGroupAutoSelect";
+import { useSuppressArcgisAbortErrors } from "../../hooks/useSuppressArcgisAbortErrors";
+import { formatMosaicDateLabel } from "../../utils/formatters";
 
 
 
@@ -137,22 +139,7 @@ const SwipePage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [droneLayersVisible]);
 
-    useEffect(() => {
-        const handler = (event: PromiseRejectionEvent) => {
-            const r = event.reason;
-            if (
-                r &&
-                (r.name === "AbortError" ||
-                    r.name === "cancelled:layerview-create" ||
-                    r.message?.includes("AbortError") ||
-                    r.message?.includes("layerview creation cancelled"))
-            ) {
-                event.preventDefault();
-            }
-        };
-        window.addEventListener("unhandledrejection", handler);
-        return () => window.removeEventListener("unhandledrejection", handler);
-    }, []);
+    useSuppressArcgisAbortErrors();
 
     useEffect(() => {
         loadPlanetMosaics();
@@ -169,15 +156,6 @@ const SwipePage: React.FC = () => {
         if (!rightMosaicId) {
             setRightMosaicId(mosaics[0].id);
         }
-
-        console.log(
-            "🔍 [DEBUG] Mosaicos carregados da API:",
-            mosaics.map((m) => ({
-                id: m.id,
-                when: m.when,
-                label: (m as any).label,
-            }))
-        );
     }, [mosaics, leftMosaicId, rightMosaicId, setPlanetSelectedId]);
 
 
@@ -669,39 +647,8 @@ const SwipePage: React.FC = () => {
         : "";
 
 
-    const titleLeft = left?.when
-        ? (() => {
-            const match3 = left.when.match(/(\d{4})[-_/\.](\d{2})[-_/\.](\d{2})/);
-            if (match3) return `${match3[3]}/${match3[2]}/${match3[1]}`;
-
-            const match2 = left.when.match(/(\d{4})[-_/\.](\d{2})/);
-            if (match2) {
-                const y = parseInt(match2[1], 10);
-                const mo = parseInt(match2[2], 10);
-                const endD = String(new Date(y, mo, 0).getDate()).padStart(2, "0");
-                return `${endD}/${match2[2]}/${match2[1]}`;
-            }
-
-            return left.when;
-        })()
-        : "?";
-
-    const titleRight = right?.when
-        ? (() => {
-            const match3 = right.when.match(/(\d{4})[-_/\.](\d{2})[-_/\.](\d{2})/);
-            if (match3) return `${match3[3]}/${match3[2]}/${match3[1]}`;
-
-            const match2 = right.when.match(/(\d{4})[-_/\.](\d{2})/);
-            if (match2) {
-                const y = parseInt(match2[1], 10);
-                const mo = parseInt(match2[2], 10);
-                const endD = String(new Date(y, mo, 0).getDate()).padStart(2, "0");
-                return `${endD}/${match2[2]}/${match2[1]}`;
-            }
-
-            return right.when;
-        })()
-        : "?";
+    const titleLeft = formatMosaicDateLabel(left?.when);
+    const titleRight = formatMosaicDateLabel(right?.when);
 
     return (
         <div id="webmap-container">
